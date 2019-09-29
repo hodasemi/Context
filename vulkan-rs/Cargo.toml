@@ -1,0 +1,11 @@
+[package]
+name = "vulkan-rs"
+version = "0.1.0"
+authors = ["hodasemi <superschneider@t-online.de>"]
+edition = "2018"
+
+[dependencies]
+shared_library = "*"
+image = "*"
+utilities = { path = "../utilities" }
+vulkan-sys = { path = "../vulkan-sys" }

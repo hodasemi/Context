@@ -1,0 +1,7 @@
+[package]
+name = "vulkan-sys"
+version = "0.1.0"
+authors = ["hodasemi <michaelh.95@t-online.de>"]
+edition = "2018"
+
+[dependencies]

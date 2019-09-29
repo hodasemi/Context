@@ -1,0 +1,23 @@
+[package]
+name = "context"
+version = "0.1.0"
+authors = ["hodasemi <superschneider@t-online.de>"]
+edition = "2018"
+
+[dependencies]
+image = "*"
+time = "*"
+utilities = { path = "../utilities" }
+vulkan-rs = { path = "../vulkan-rs" }
+presentation = { path = "../presentation" }
+ears = { version = "*", optional = true }
+cgmath = "*"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libloading = "*"
+
+[features]
+user_interface = []
+audio = ["ears"]
+openxr = ["presentation/OpenXR"]
+openvr = ["presentation/OpenVR"]

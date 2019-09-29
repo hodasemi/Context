@@ -1,0 +1,14 @@
+pub use VkEventCreateFlags::*;
+
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VkEventCreateFlags {
+    VK_EVENT_CREATE_NULL_BIT = 0,
+}
+
+use crate::SetupVkFlags;
+
+#[repr(C)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+pub struct VkEventCreateFlagBits(u32);
+SetupVkFlags!(VkEventCreateFlags, VkEventCreateFlagBits);

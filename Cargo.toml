@@ -1,0 +1,8 @@
+[workspace]
+members = [
+	"context",
+	"vulkan-rs",
+	"presentation",
+	"vulkan-sys",
+	"utilities"
+]

@@ -1,0 +1,8 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+    "editor.formatOnSave": true,
+    "files.trimTrailingWhitespace": true,
+    "lldb.displayFormat": "auto",
+    "lldb.showDisassembly": "never",
+    "lldb.dereferencePointers": true,
+}

@@ -1,0 +1,17 @@
+[package]
+name = "presentation"
+version = "0.1.0"
+authors = ["hodasemi <superschneider@t-online.de>"]
+edition = "2018"
+
+[dependencies]
+cgmath = "*"
+utilities = { path = "../utilities" }
+vulkan-rs = { path = "../vulkan-rs" }
+openxr = { version = "*", default-features = false, features = ["static"], optional = true }
+openvr = { version = "*", optional = true }
+sdl2 = { version = "*", default-features = false, features = ["bundled", "static-link"] }
+
+[features]
+OpenXR = ["openxr"]
+OpenVR = ["openvr"]
