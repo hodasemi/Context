@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use super::axisemulator::AxisEmulator;
 use super::osspecific::osspecific::OsSpecific;
 use super::time::Time;
@@ -13,10 +15,9 @@ use crate::prelude::*;
 
 use presentation::prelude::*;
 
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, RefMut};
 use std::collections::HashMap;
 use std::env::set_var;
-// use std::ops::Deref;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
