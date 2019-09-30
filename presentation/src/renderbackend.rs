@@ -16,11 +16,6 @@ pub enum TargetMode<T> {
     Stereo(T, T),
 }
 
-pub enum Eye {
-    Left,
-    Right,
-}
-
 impl<T> TargetMode<T> {
     pub fn single(&self) -> VerboseResult<&T> {
         match self {
@@ -51,6 +46,13 @@ impl<T> TargetMode<T> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Eye {
+    Left,
+    Right,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct VRTransformations {
     pub proj: Matrix4<f32>,
     pub view: Matrix4<f32>,
