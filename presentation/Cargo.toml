@@ -10,7 +10,7 @@ utilities = { path = "../utilities" }
 vulkan-rs = { path = "../vulkan-rs" }
 openxr = { version = "*", default-features = false, features = ["static"], optional = true }
 openvr = { version = "*", optional = true }
-sdl2 = { version = "*", default-features = false, features = ["bundled"] }
+sdl2 = { version = "*", default-features = false }
 
 [features]
 OpenXR = ["openxr"]
