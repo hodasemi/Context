@@ -45,7 +45,6 @@ pub mod openxrrendercore {
     use utilities::prelude::*;
     use vulkan_rs::prelude::*;
 
-    use std::rc::Rc;
     use std::sync::Arc;
 
     use super::openxrintegration::OpenXRIntegration;
@@ -72,11 +71,11 @@ pub mod openxrrendercore {
         }
 
         // scene handling
-        fn add_scene(&self, _: Rc<dyn TScene>) -> VerboseResult<()> {
+        fn add_scene(&self, _: Arc<dyn TScene>) -> VerboseResult<()> {
             unimplemented!()
         }
 
-        fn remove_scene(&self, _: &Rc<dyn TScene>) -> VerboseResult<()> {
+        fn remove_scene(&self, _: &Arc<dyn TScene>) -> VerboseResult<()> {
             unimplemented!()
         }
 

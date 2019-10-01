@@ -14,7 +14,6 @@ use super::openvrintegration::OpenVRIntegration;
 use crate::{p_try, prelude::*, renderbackend::RenderBackend};
 
 use std::mem::transmute;
-use std::rc::Rc;
 use std::sync::Arc;
 
 pub struct OpenVRRenderCore {
@@ -193,11 +192,11 @@ impl RenderCore for OpenVRRenderCore {
     }
 
     // scene handling
-    fn add_scene(&self, scene: Rc<dyn TScene>) -> VerboseResult<()> {
+    fn add_scene(&self, scene: Arc<dyn TScene>) -> VerboseResult<()> {
         self.render_backend.add_scene(scene)
     }
 
-    fn remove_scene(&self, scene: &Rc<dyn TScene>) -> VerboseResult<()> {
+    fn remove_scene(&self, scene: &Arc<dyn TScene>) -> VerboseResult<()> {
         self.render_backend.remove_scene(scene)
     }
 

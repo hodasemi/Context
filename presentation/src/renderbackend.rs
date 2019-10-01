@@ -6,7 +6,6 @@ use vulkan_rs::prelude::*;
 
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
-use std::rc::Rc;
 use std::slice;
 use std::sync::Arc;
 
@@ -72,7 +71,7 @@ pub struct RenderBackend {
     cmd_pool: Arc<CommandPool>,
     command_buffer: Arc<CommandBuffer>,
 
-    scenes: RefCell<Vec<Rc<dyn TScene>>>,
+    scenes: RefCell<Vec<Arc<dyn TScene>>>,
 
     resize_callback: RefCell<Option<Box<dyn Fn(u32, u32) -> VerboseResult<()>>>>,
     render_gui: RefCell<
@@ -314,20 +313,20 @@ impl RenderBackend {
     }
 
     // scene handling
-    pub fn add_scene(&self, scene: Rc<dyn TScene>) -> VerboseResult<()> {
+    pub fn add_scene(&self, scene: Arc<dyn TScene>) -> VerboseResult<()> {
         let mut scenes = self.scenes.try_borrow_mut()?;
 
         // check if that scene is already present
-        if scenes.iter().find(|s| Rc::ptr_eq(s, &scene)).is_none() {
+        if scenes.iter().find(|s| Arc::ptr_eq(s, &scene)).is_none() {
             scenes.push(scene);
         }
 
         Ok(())
     }
 
-    pub fn remove_scene(&self, scene: &Rc<dyn TScene>) -> VerboseResult<()> {
+    pub fn remove_scene(&self, scene: &Arc<dyn TScene>) -> VerboseResult<()> {
         let mut scenes = self.scenes.try_borrow_mut()?;
-        erase_rc(&mut scenes, scene);
+        erase_arc(&mut scenes, scene);
 
         Ok(())
     }

@@ -1,7 +1,6 @@
 use utilities::prelude::*;
 use vulkan_rs::prelude::*;
 
-use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::prelude::*;
@@ -21,8 +20,8 @@ pub trait RenderCore {
     fn next_frame(&self) -> VerboseResult<bool>;
 
     // scene handling
-    fn add_scene(&self, scene: Rc<dyn TScene>) -> VerboseResult<()>;
-    fn remove_scene(&self, scene: &Rc<dyn TScene>) -> VerboseResult<()>;
+    fn add_scene(&self, scene: Arc<dyn TScene>) -> VerboseResult<()>;
+    fn remove_scene(&self, scene: &Arc<dyn TScene>) -> VerboseResult<()>;
     fn clear_scenes(&self) -> VerboseResult<()>;
 
     // callbacks
