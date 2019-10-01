@@ -628,6 +628,9 @@ impl Context {
             }
         }
 
+        self.set_game_object(None)?;
+        self.render_core.clear_scenes()?;
+
         Ok(())
     }
 
