@@ -1,10 +1,10 @@
 use openvr::{
     compositor::texture::vulkan::Texture as OpenVRVulkanTexture, compositor::texture::ColorSpace,
     compositor::texture::Handle, compositor::texture::Texture, compositor::WaitPoses, Compositor,
-    Eye as OpenVREye, System, TrackedDevicePose,
+    Eye as OpenVREye, System, TrackedDeviceClass, TrackedDevicePose,
 };
 
-use cgmath::Matrix4;
+use cgmath::{vec4, Matrix4, SquareMatrix};
 
 use utilities::prelude::*;
 use vulkan_rs::prelude::*;
@@ -128,12 +128,31 @@ impl OpenVRRenderCore {
     }
 
     #[inline]
+    fn find_tracked_hmd(
+        system: &System,
+        poses: [TrackedDevicePose; 64],
+    ) -> Option<TrackedDevicePose> {
+        for (i, pose) in poses.iter().enumerate() {
+            if system.tracked_device_class(i as u32) == TrackedDeviceClass::HMD
+                && pose.pose_is_valid()
+                && pose.device_is_connected()
+            {
+                return Some(*pose);
+            }
+        }
+
+        None
+    }
+
+    #[inline]
     fn setup_transformations(
         system: &System,
         wait_poses: WaitPoses,
     ) -> TargetMode<VRTransformations> {
-        let left = Self::vr_transform(system, OpenVREye::Left, &wait_poses.render[0]);
-        let right = Self::vr_transform(system, OpenVREye::Right, &wait_poses.render[0]);
+        let pose = Self::find_tracked_hmd(system, wait_poses.render);
+
+        let left = Self::vr_transform(system, OpenVREye::Left, pose);
+        let right = Self::vr_transform(system, OpenVREye::Right, pose);
 
         TargetMode::Stereo(left, right)
     }
@@ -142,22 +161,32 @@ impl OpenVRRenderCore {
     fn vr_transform(
         system: &System,
         eye: OpenVREye,
-        pose: &TrackedDevicePose,
+        pose: Option<TrackedDevicePose>,
     ) -> VRTransformations {
         let proj = system.projection_matrix(eye, 0.1, 1000.0);
         let eye = system.eye_to_head_transform(eye);
-        let view = *pose.device_to_absolute_tracking();
+
+        let view = match pose {
+            Some(pose) => Self::openvr43_to_matrix4(*pose.device_to_absolute_tracking())
+                .invert()
+                .expect("failed to invert OpenVR View Matrix"),
+            None => Matrix4::identity(),
+        };
 
         VRTransformations {
             proj: Matrix4::from(proj),
-            view: Self::openvr43_to_matrix4(eye) * Self::openvr43_to_matrix4(view),
+            view: Self::openvr43_to_matrix4(eye) * view,
         }
     }
 
     #[inline]
     fn openvr43_to_matrix4(m: [[f32; 4]; 3]) -> Matrix4<f32> {
-        let nm = [m[0], m[1], m[2], [0.0, 0.0, 0.0, 1.0]];
-        Matrix4::from(nm)
+        let col_0 = vec4(m[0][0], m[1][0], m[2][0], 0.0);
+        let col_1 = vec4(m[0][1], m[1][1], m[2][1], 0.0);
+        let col_2 = vec4(m[0][2], m[1][2], m[2][2], 0.0);
+        let col_3 = vec4(m[0][3], m[1][3], m[2][3], 1.0);
+
+        Matrix4::from_cols(col_0, col_1, col_2, col_3)
     }
 }
 
