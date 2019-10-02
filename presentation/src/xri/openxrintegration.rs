@@ -1,6 +1,6 @@
 use openxr::{
-    vulkan::SessionCreateInfo, ApplicationInfo, EnvironmentBlendMode, FormFactor, FrameStream,
-    FrameWaiter, Instance as OpenXRInstance, Session, SystemId, SystemProperties,
+    vulkan::SessionCreateInfo, ApplicationInfo, EnvironmentBlendMode, ExtensionSet, FormFactor,
+    FrameStream, FrameWaiter, Instance as OpenXRInstance, Session, SystemId, SystemProperties,
     ViewConfigurationProperties, ViewConfigurationType, ViewConfigurationView, Vulkan,
 };
 
@@ -21,16 +21,22 @@ impl OpenXRIntegration {
     pub fn new<'a>(app_info: ApplicationInfo<'a>) -> VerboseResult<OpenXRIntegration> {
         let entry = openxr::Entry::linked();
 
-        let extensions = p_try!(entry.enumerate_extensions());
+        let supported_extensions = p_try!(entry.enumerate_extensions());
+        println!("supported extensions: {:#?}", supported_extensions);
 
-        println!("Extensions: {:#?}", extensions);
+        let mut extensions = ExtensionSet::default();
 
-        if !extensions.khr_vulkan_enable {
+        if !supported_extensions.khr_vulkan_enable {
             create_error!("vulkan not available for OpenXR implementation");
         }
 
-        let instance = p_try!(entry.create_instance(&app_info, &extensions));
+        extensions.khr_vulkan_enable = true;
 
+        if supported_extensions.ext_debug_utils {
+            // extensions.ext_debug_utils = true;
+        }
+
+        let instance = p_try!(entry.create_instance(&app_info, &extensions));
         let system_id = p_try!(instance.system(FormFactor::HEAD_MOUNTED_DISPLAY));
 
         Ok(OpenXRIntegration {

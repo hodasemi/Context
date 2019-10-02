@@ -389,7 +389,7 @@ impl RenderCore for OpenXRRenderCore {
         p_try!(left_eye_swapchain.release_image());
         p_try!(right_eye_swapchain.release_image());
 
-        let left_subimage: SwapchainSubImage<'_, Vulkan> = SwapchainSubImage::new()
+        let left_subimage = SwapchainSubImage::new()
             .swapchain(&left_eye_swapchain)
             .image_array_index(left_eye_image_index as u32)
             .image_rect(Rect2Di {
@@ -400,7 +400,7 @@ impl RenderCore for OpenXRRenderCore {
                 },
             });
 
-        let right_subimage: SwapchainSubImage<'_, Vulkan> = SwapchainSubImage::new()
+        let right_subimage = SwapchainSubImage::new()
             .swapchain(&right_eye_swapchain)
             .image_array_index(right_eye_image_index as u32)
             .image_rect(Rect2Di {
