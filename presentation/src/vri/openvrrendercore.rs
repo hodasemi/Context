@@ -174,9 +174,19 @@ impl OpenVRRenderCore {
         };
 
         VRTransformations {
-            proj: Matrix4::from(proj),
+            proj: Self::openvr44_to_matrix4(proj),
             view: Self::openvr43_to_matrix4(eye) * view,
         }
+    }
+
+    #[inline]
+    fn openvr44_to_matrix4(m: [[f32; 4]; 4]) -> Matrix4<f32> {
+        let col_0 = vec4(m[0][0], m[1][0], m[2][0], m[3][0]);
+        let col_1 = vec4(m[0][1], -m[1][1], m[2][1], m[3][1]);
+        let col_2 = vec4(m[0][2], m[1][2], m[2][2], m[3][2]);
+        let col_3 = vec4(m[0][3], m[1][3], m[2][3], m[3][3]);
+
+        Matrix4::from_cols(col_0, col_1, col_2, col_3)
     }
 
     #[inline]
