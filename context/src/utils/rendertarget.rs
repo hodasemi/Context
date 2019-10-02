@@ -36,7 +36,7 @@ pub struct RenderTargetBuilder<'a> {
 
     target_infos: Vec<CustomTarget>,
 
-    prepared_targets: Option<(&'a [Arc<Image>], usize)>,
+    prepared_targets: Option<(&'a [Arc<Image>], usize, [f32; 4])>,
     resolve_targets: Option<&'a [Arc<Image>]>,
 }
 
@@ -57,8 +57,9 @@ impl<'a> RenderTargetBuilder<'a> {
         mut self,
         prepared_targets: &'a [Arc<Image>],
         target_index: usize,
+        clear_color: impl Into<[f32; 4]>,
     ) -> Self {
-        self.prepared_targets = Some((prepared_targets, target_index));
+        self.prepared_targets = Some((prepared_targets, target_index, clear_color.into()));
 
         self
     }
@@ -76,7 +77,7 @@ impl<'a> RenderTargetBuilder<'a> {
         let mut framebuffers = Vec::new();
 
         match (self.resolve_targets, self.prepared_targets) {
-            (Some(resolve_targets), Some((prepared_targets, index))) => {
+            (Some(resolve_targets), Some((prepared_targets, index, _))) => {
                 debug_assert!(prepared_targets.len() == resolve_targets.len());
 
                 for (i, resolve_target) in resolve_targets.iter().enumerate() {
@@ -117,7 +118,7 @@ impl<'a> RenderTargetBuilder<'a> {
                     framebuffers.push(framebuffer);
                 }
             }
-            (None, Some((prepared_targets, index))) => {
+            (None, Some((prepared_targets, index, _))) => {
                 for prepared_target in prepared_targets {
                     let ref_images = Self::insert_prepared_target(&images, &prepared_target, index);
 
@@ -275,12 +276,10 @@ impl<'a> RenderTargetBuilder<'a> {
 
         for (i, target_info) in self.target_infos.iter().enumerate() {
             // check for prepared images and their index
-            if let Some((prepared_images, index)) = self.prepared_targets {
+            if let Some((prepared_images, index, clear_color)) = self.prepared_targets {
                 if i == index {
                     // assume prepared images are always color attachments
-                    clear_values.push(VkClearValue::color(VkClearColorValue::float32([
-                        0.0, 0.0, 0.0, 1.0,
-                    ])));
+                    clear_values.push(VkClearValue::color(VkClearColorValue::float32(clear_color)));
 
                     // add color attachment
                     attachments.push(VkAttachmentDescription::new(
