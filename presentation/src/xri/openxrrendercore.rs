@@ -391,7 +391,7 @@ impl RenderCore for OpenXRRenderCore {
 
         let left_subimage = SwapchainSubImage::new()
             .swapchain(&left_eye_swapchain)
-            .image_array_index(left_eye_image_index as u32)
+            .image_array_index(0)
             .image_rect(Rect2Di {
                 offset: Offset2Di { x: 0, y: 0 },
                 extent: Extent2Di {
@@ -402,7 +402,7 @@ impl RenderCore for OpenXRRenderCore {
 
         let right_subimage = SwapchainSubImage::new()
             .swapchain(&right_eye_swapchain)
-            .image_array_index(right_eye_image_index as u32)
+            .image_array_index(0)
             .image_rect(Rect2Di {
                 offset: Offset2Di { x: 0, y: 0 },
                 extent: Extent2Di {
