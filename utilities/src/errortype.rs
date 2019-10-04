@@ -95,4 +95,20 @@ impl From<Box<dyn Any + Send + 'static>> for UtilError {
     }
 }
 
+impl<T: std::fmt::Debug> From<std::sync::PoisonError<T>> for UtilError {
+    fn from(error: std::sync::PoisonError<T>) -> UtilError {
+        UtilError {
+            inner: Context::new(format!("{:?}", error.get_ref())),
+        }
+    }
+}
+
+impl<T> From<std::sync::TryLockError<T>> for UtilError {
+    fn from(error: std::sync::TryLockError<T>) -> UtilError {
+        UtilError {
+            inner: Context::new(format!("{:?}", error)),
+        }
+    }
+}
+
 pub type VerboseResult<T> = Result<T, UtilError>;
