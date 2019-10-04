@@ -101,7 +101,7 @@ impl ImageBuilder {
 
                 let sampler = match self.sampler_info {
                     Some(sampler_info) => device.create_sampler(&sampler_info)?,
-                    None => VkSampler::default(),
+                    None => VkSampler::NULL_HANDLE,
                 };
 
                 Ok(Arc::new(Image {
@@ -515,7 +515,7 @@ impl ImageBuilder {
     fn vk_image_view_create_info(&self) -> VkImageViewCreateInfo {
         VkImageViewCreateInfo::new(
             0,
-            VkImage::default(),
+            VkImage::NULL_HANDLE,
             self.view_type,
             match &self.builder_type {
                 ImageBuilderInternalType::NewImage(info) => info.vk_image_create_info.format,
@@ -546,7 +546,7 @@ impl ImageBuilder {
 
         let sampler = match sampler_info {
             Some(ref sampler_ci) => device.create_sampler(&sampler_ci)?,
-            None => VkSampler::default(),
+            None => VkSampler::NULL_HANDLE,
         };
 
         Ok(Arc::new(Image {
@@ -832,7 +832,7 @@ impl_vk_handle!(Image, VkImageView, image_view);
 
 impl Drop for Image {
     fn drop(&mut self) {
-        if self.sampler != VkSampler::default() {
+        if self.sampler != VkSampler::NULL_HANDLE {
             self.device.destroy_sampler(self.sampler);
         }
 

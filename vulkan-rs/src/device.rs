@@ -1317,7 +1317,7 @@ impl Device {
                 self.device,
                 match pipeline_cache {
                     Some(cache) => cache,
-                    None => VkPipelineCache::default(),
+                    None => VkPipelineCache::NULL_HANDLE,
                 },
                 create_infos.len() as u32,
                 create_infos.as_ptr(),
@@ -1348,7 +1348,7 @@ impl Device {
                 self.device,
                 match pipeline_cache {
                     Some(cache) => cache,
-                    None => VkPipelineCache::default(),
+                    None => VkPipelineCache::NULL_HANDLE,
                 },
                 create_infos.len() as u32,
                 create_infos.as_ptr(),
@@ -1471,11 +1471,11 @@ impl Device {
                 timeout,
                 match semaphore {
                     Some(sem) => sem,
-                    None => VkSemaphore::default(),
+                    None => VkSemaphore::NULL_HANDLE,
                 },
                 match fence {
                     Some(fence) => fence,
-                    None => VkFence::default(),
+                    None => VkFence::NULL_HANDLE,
                 },
                 &mut image_index,
             );
@@ -2171,7 +2171,7 @@ impl Device {
                 self.device,
                 match pipeline_cache {
                     Some(cache) => cache,
-                    None => VkPipelineCache::default(),
+                    None => VkPipelineCache::NULL_HANDLE,
                 },
                 pipeline_create_infos.len() as u32,
                 pipeline_create_infos.as_ptr(),

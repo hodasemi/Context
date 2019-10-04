@@ -56,16 +56,16 @@ impl VkGeometryTrianglesNV {
 impl Default for VkGeometryTrianglesNV {
     fn default() -> Self {
         Self::new(
-            VkBuffer::default(),
+            VkBuffer::NULL_HANDLE,
             0,
             0,
             0,
-            VkFormat::default(),
-            VkBuffer::default(),
+            VkFormat::VK_FORMAT_UNDEFINED,
+            VkBuffer::NULL_HANDLE,
             0,
             0,
             VK_INDEX_TYPE_NONE_NV,
-            VkBuffer::default(),
+            VkBuffer::NULL_HANDLE,
             0,
         )
     }

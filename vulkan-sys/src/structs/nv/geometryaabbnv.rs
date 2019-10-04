@@ -29,6 +29,6 @@ impl VkGeometryAABBNV {
 
 impl Default for VkGeometryAABBNV {
     fn default() -> Self {
-        Self::new(VkBuffer::default(), 0, 0, 0)
+        Self::new(VkBuffer::NULL_HANDLE, 0, 0, 0)
     }
 }

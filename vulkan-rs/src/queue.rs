@@ -79,7 +79,7 @@ impl Queue {
 
         let fence = match fence {
             Some(fence) => fence.vk_handle(),
-            None => VkFence::default(),
+            None => VkFence::NULL_HANDLE,
         };
 
         self.device

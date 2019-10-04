@@ -34,7 +34,7 @@ pub fn load_static() -> VerboseResult<(DynamicLibrary, StaticFunctions)> {
 
 pub fn load_entry(static_functions: &StaticFunctions) -> EntryFunctions {
     EntryFunctions::load(|name| unsafe {
-        transmute(static_functions.vkGetInstanceProcAddr(VkInstance::default(), name.as_ptr()))
+        transmute(static_functions.vkGetInstanceProcAddr(VkInstance::NULL_HANDLE, name.as_ptr()))
     })
 }
 

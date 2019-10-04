@@ -95,7 +95,7 @@ impl VkGraphicsPipelineCreateInfo {
             layout,
             renderPass: renderpass,
             subpass,
-            basePipelineHandle: VkPipeline::default(),
+            basePipelineHandle: VkPipeline::NULL_HANDLE,
             basePipelineIndex: -1,
         }
     }

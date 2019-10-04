@@ -74,7 +74,7 @@ impl VkSwapchainCreateInfoKHR {
             compositeAlpha: composite_alpha.into(),
             presentMode: present_mode,
             clipped: clipped.into(),
-            oldSwapchain: VkSwapchainKHR::default(),
+            oldSwapchain: VkSwapchainKHR::NULL_HANDLE,
         }
     }
 

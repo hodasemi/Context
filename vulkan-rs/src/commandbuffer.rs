@@ -744,14 +744,14 @@ impl CommandBuffer {
             info,
             match instance_data {
                 Some(instance) => instance.vk_handle(),
-                None => VkBuffer::default(),
+                None => VkBuffer::NULL_HANDLE,
             },
             0,
             src.is_some(),
             dst.vk_handle(),
             match src {
                 Some(src) => src.vk_handle(),
-                None => VkAccelerationStructureNV::default(),
+                None => VkAccelerationStructureNV::NULL_HANDLE,
             },
             scratch.vk_handle(),
             0,
@@ -805,7 +805,7 @@ impl CommandBuffer {
             sbt.sbt_buffer().vk_handle(),
             sbt.hit_group_offset(),
             sbt.hit_group_stride(),
-            VkBuffer::default(),
+            VkBuffer::NULL_HANDLE,
             0,
             0,
             width,
@@ -863,7 +863,7 @@ impl CommandBuffer {
         let mut info = VkCommandBufferInheritanceInfo::new(
             match render_pass {
                 Some(render_pass) => render_pass.vk_handle(),
-                None => VkRenderPass::default(),
+                None => VkRenderPass::NULL_HANDLE,
             },
             match sub_pass {
                 Some(sub_pass) => sub_pass,
@@ -871,7 +871,7 @@ impl CommandBuffer {
             },
             match framebuffer {
                 Some(framebuffer) => framebuffer.vk_handle(),
-                None => VkFramebuffer::default(),
+                None => VkFramebuffer::NULL_HANDLE,
             },
         );
 

@@ -190,12 +190,6 @@ pub enum VkFormat {
     VK_FORMAT_ASTC_12x12_SRGB_BLOCK = 184,
 }
 
-impl Default for VkFormat {
-    fn default() -> Self {
-        VK_FORMAT_UNDEFINED
-    }
-}
-
 impl From<u32> for VkFormat {
     fn from(n: u32) -> Self {
         match n {

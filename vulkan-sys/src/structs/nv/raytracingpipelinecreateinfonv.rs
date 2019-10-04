@@ -40,7 +40,7 @@ impl VkRayTracingPipelineCreateInfoNV {
             pGroups: groups.as_ptr(),
             maxRecursionDepth: max_recursion_depth,
             layout,
-            basePipelineHandle: VkPipeline::default(),
+            basePipelineHandle: VkPipeline::NULL_HANDLE,
             basePipelineIndex: -1,
         }
     }

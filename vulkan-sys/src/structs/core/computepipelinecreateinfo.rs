@@ -30,7 +30,7 @@ impl VkComputePipelineCreateInfo {
             flags: flags.into(),
             stage,
             layout,
-            basePipelineHandle: VkPipeline::default(),
+            basePipelineHandle: VkPipeline::NULL_HANDLE,
             basePipelineIndex: -1,
         }
     }

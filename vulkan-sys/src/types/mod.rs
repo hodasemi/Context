@@ -8,12 +8,12 @@ pub mod voidfunction;
 
 pub mod prelude;
 
-pub struct VK_NULL_HANDLE(u32);
-
 #[macro_export]
 macro_rules! SetupU64Conv {
     ($name: ident) => {
         impl $name {
+            pub const NULL_HANDLE: $name = $name(0);
+
             pub fn raw(&self) -> u64 {
                 self.0
             }
@@ -24,6 +24,9 @@ macro_rules! SetupU64Conv {
                 $name(v)
             }
         }
+
+        unsafe impl Sync for $name {}
+        unsafe impl Send for $name {}
     };
 }
 
@@ -31,6 +34,8 @@ macro_rules! SetupU64Conv {
 macro_rules! SetupUSizeConv {
     ($name: ident) => {
         impl $name {
+            pub const NULL_HANDLE: $name = $name(0);
+
             pub fn raw(&self) -> usize {
                 self.0
             }
@@ -41,5 +46,8 @@ macro_rules! SetupUSizeConv {
                 $name(v)
             }
         }
+
+        unsafe impl Sync for $name {}
+        unsafe impl Send for $name {}
     };
 }
