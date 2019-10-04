@@ -220,53 +220,64 @@ impl EventSystem {
                         which as u32,
                         self.controller_axis_deadzone.get(),
                     ) {
-                        let mut connected_controllers =
-                            self.connected_controllers.try_borrow_mut()?;
+                        let controller = {
+                            let mut connected_controllers =
+                                self.connected_controllers.try_borrow_mut()?;
 
-                        let mut selected_controller = self.selected_controller.try_borrow_mut()?;
+                            let mut selected_controller =
+                                self.selected_controller.try_borrow_mut()?;
 
-                        let rc_controller = Rc::new(RefCell::new(controller));
+                            let rc_controller = Rc::new(RefCell::new(controller));
 
-                        connected_controllers.push(rc_controller.clone());
+                            connected_controllers.push(rc_controller.clone());
 
-                        if selected_controller.is_none() {
-                            *selected_controller = Some(rc_controller.clone());
-                        }
+                            if selected_controller.is_none() {
+                                *selected_controller = Some(rc_controller.clone());
+                            }
+
+                            rc_controller
+                        };
 
                         self.event_callback.try_borrow()?(PresentationEventType::ControllerAdded(
-                            rc_controller,
+                            controller,
                         ))?;
                     }
                 }
                 Event::ControllerDeviceRemoved { which, .. } => {
-                    let mut selected_controller = self.selected_controller.try_borrow_mut()?;
+                    let removed_controller = {
+                        let mut selected_controller = self.selected_controller.try_borrow_mut()?;
 
-                    if selected_controller.is_some() {
-                        // unwrap is save since we just tested for `is_some()`
-                        if selected_controller.as_ref().unwrap().try_borrow()?.id() as i32 == which
-                        {
-                            *selected_controller = None;
+                        if selected_controller.is_some() {
+                            // unwrap is save since we just tested for `is_some()`
+                            if selected_controller.as_ref().unwrap().try_borrow()?.id() as i32
+                                == which
+                            {
+                                *selected_controller = None;
+                            }
                         }
-                    }
 
-                    let mut connected_controllers = self.connected_controllers.try_borrow_mut()?;
+                        let mut connected_controllers =
+                            self.connected_controllers.try_borrow_mut()?;
 
-                    let mut remove_index = 0;
+                        let mut remove_index = 0;
 
-                    for (i, controller_cell) in connected_controllers.iter().enumerate() {
-                        let controller = controller_cell.try_borrow()?;
-                        if controller.id() as i32 == which {
-                            remove_index = i;
-                            break;
+                        for (i, controller_cell) in connected_controllers.iter().enumerate() {
+                            let controller = controller_cell.try_borrow()?;
+                            if controller.id() as i32 == which {
+                                remove_index = i;
+                                break;
+                            }
                         }
-                    }
 
-                    let removed_controller = connected_controllers.swap_remove(remove_index);
+                        let removed_controller = connected_controllers.swap_remove(remove_index);
 
-                    // if we removed the selected controller, take the controller at the first position if possible
-                    if selected_controller.is_none() && !connected_controllers.is_empty() {
-                        *selected_controller = Some(connected_controllers[0].clone());
-                    }
+                        // if we removed the selected controller, take the controller at the first position if possible
+                        if selected_controller.is_none() && !connected_controllers.is_empty() {
+                            *selected_controller = Some(connected_controllers[0].clone());
+                        }
+
+                        removed_controller
+                    };
 
                     self.event_callback.try_borrow()?(PresentationEventType::ControllerRemoved(
                         removed_controller,
@@ -275,28 +286,34 @@ impl EventSystem {
                 // maybe make use of `which`, for support of multiple controllers
                 Event::ControllerButtonDown { button, which, .. } => {
                     // only call back if the selected controller pressed a button
-                    if let Some(selected_controller) =
-                        self.selected_controller.try_borrow()?.as_ref()
-                    {
-                        if selected_controller.try_borrow()?.id() as i32 == which {
-                            self.event_callback.try_borrow()?(
-                                PresentationEventType::ControllerButtonDown(button),
-                            )?;
+                    match self.selected_controller.try_borrow()?.as_ref() {
+                        Some(selected_controller) => {
+                            if selected_controller.try_borrow()?.id() as i32 != which {
+                                continue;
+                            }
                         }
+                        None => continue,
                     }
+
+                    self.event_callback.try_borrow()?(
+                        PresentationEventType::ControllerButtonDown(button),
+                    )?;
                 }
                 // maybe make use of `which`, for support of multiple controllers
                 Event::ControllerButtonUp { button, which, .. } => {
                     // only call back if the selected controller released a button
-                    if let Some(selected_controller) =
-                        self.selected_controller.try_borrow()?.as_ref()
-                    {
-                        if selected_controller.try_borrow()?.id() as i32 == which {
-                            self.event_callback.try_borrow()?(
-                                PresentationEventType::ControllerButtonUp(button),
-                            )?;
+                    match self.selected_controller.try_borrow()?.as_ref() {
+                        Some(selected_controller) => {
+                            if selected_controller.try_borrow()?.id() as i32 != which {
+                                continue;
+                            }
                         }
+                        None => continue,
                     }
+
+                    self.event_callback.try_borrow()?(PresentationEventType::ControllerButtonUp(
+                        button,
+                    ))?;
                 }
                 Event::ControllerAxisMotion {
                     axis, value, which, ..
