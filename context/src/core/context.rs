@@ -344,7 +344,7 @@ impl Context {
         #[cfg(feature = "user_interface")]
         {
             if self.gui_handler.check_navigatable()? {
-                if let Some(mapped_input) = self._controller_menu_input.get(&button) {
+                if let Some(mapped_input) = self.controller_menu_input.get(&button) {
                     if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
                         game_object.event(Event::KeyUp(*mapped_input))?;
                     }
@@ -373,7 +373,7 @@ impl Context {
         #[cfg(feature = "user_interface")]
         {
             if self.gui_handler.check_navigatable()? {
-                if let Some(mapped_input) = self._controller_menu_input.get(&button) {
+                if let Some(mapped_input) = self.controller_menu_input.get(&button) {
                     if *mapped_input == InputMap::A {
                         match self.gui_handler.accept_selection() {
                             Ok(success) => {
