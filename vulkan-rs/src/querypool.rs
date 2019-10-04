@@ -56,6 +56,9 @@ impl QueryPool {
     }
 }
 
+unsafe impl Sync for QueryPool {}
+unsafe impl Send for QueryPool {}
+
 impl_vk_handle!(QueryPool, VkQueryPool, query_pool);
 
 impl Drop for QueryPool {

@@ -37,6 +37,9 @@ impl PipelineLayout {
     }
 }
 
+unsafe impl Sync for PipelineLayout {}
+unsafe impl Send for PipelineLayout {}
+
 impl_vk_handle!(PipelineLayout, VkPipelineLayout, pipeline_layout);
 
 impl Drop for PipelineLayout {

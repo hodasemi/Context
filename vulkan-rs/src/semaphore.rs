@@ -21,6 +21,9 @@ impl Semaphore {
     }
 }
 
+unsafe impl Sync for Semaphore {}
+unsafe impl Send for Semaphore {}
+
 impl_vk_handle!(Semaphore, VkSemaphore, semaphore);
 
 impl Drop for Semaphore {

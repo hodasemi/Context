@@ -826,6 +826,9 @@ impl Image {
     }
 }
 
+unsafe impl Send for Image {}
+unsafe impl Sync for Image {}
+
 impl_vk_handle!(Image, VkImage, image);
 impl_vk_handle!(Image, VkSampler, sampler);
 impl_vk_handle!(Image, VkImageView, image_view);

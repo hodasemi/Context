@@ -58,6 +58,9 @@ impl Surface {
     }
 }
 
+unsafe impl Sync for Surface {}
+unsafe impl Send for Surface {}
+
 impl_vk_handle!(Surface, VkSurfaceKHR, surface);
 
 impl Drop for Surface {

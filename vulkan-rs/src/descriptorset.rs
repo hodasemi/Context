@@ -229,6 +229,9 @@ impl DescriptorSet {
     }
 }
 
+unsafe impl Send for DescriptorSet {}
+unsafe impl Sync for DescriptorSet {}
+
 impl_vk_handle!(DescriptorSet, VkDescriptorSet, descriptor_set);
 
 impl VkHandle<VkDescriptorSetLayout> for DescriptorSet {

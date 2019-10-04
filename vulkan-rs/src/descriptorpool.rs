@@ -83,6 +83,9 @@ impl DescriptorPool {
     }
 }
 
+unsafe impl Send for DescriptorPool {}
+unsafe impl Sync for DescriptorPool {}
+
 impl_vk_handle!(DescriptorPool, VkDescriptorPool, descriptor_pool);
 
 impl VkHandle<VkDescriptorSetLayout> for DescriptorPool {

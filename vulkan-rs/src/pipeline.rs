@@ -35,6 +35,9 @@ pub struct Pipeline {
     pipeline: VkPipeline,
 }
 
+unsafe impl Sync for Pipeline {}
+unsafe impl Send for Pipeline {}
+
 impl Pipeline {
     pub fn new_graphics(
         device: Arc<Device>,

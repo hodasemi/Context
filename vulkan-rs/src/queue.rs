@@ -165,6 +165,9 @@ impl Queue {
     }
 }
 
+unsafe impl Sync for Queue {}
+unsafe impl Send for Queue {}
+
 impl_vk_handle!(Queue, VkQueue, queue);
 
 pub struct SubmitInfo {

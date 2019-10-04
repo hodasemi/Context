@@ -59,6 +59,9 @@ impl CommandPool {
     }
 }
 
+unsafe impl Send for CommandPool {}
+unsafe impl Sync for CommandPool {}
+
 impl_vk_handle!(CommandPool, VkCommandPool, command_pool);
 
 impl Drop for CommandPool {

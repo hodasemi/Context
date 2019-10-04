@@ -245,6 +245,9 @@ impl Device {
     }
 }
 
+unsafe impl Send for Device {}
+unsafe impl Sync for Device {}
+
 impl_vk_handle!(Device, VkDevice, device);
 
 impl fmt::Debug for Device {

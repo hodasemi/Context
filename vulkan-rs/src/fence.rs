@@ -47,6 +47,9 @@ impl Fence {
     }
 }
 
+unsafe impl Send for Fence {}
+unsafe impl Sync for Fence {}
+
 impl_vk_handle!(Fence, VkFence, fence);
 
 impl Drop for Fence {

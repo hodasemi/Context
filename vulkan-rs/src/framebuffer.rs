@@ -123,6 +123,9 @@ impl Framebuffer {
     }
 }
 
+unsafe impl Send for Framebuffer {}
+unsafe impl Sync for Framebuffer {}
+
 impl_vk_handle!(Framebuffer, VkFramebuffer, framebuffer);
 
 impl Drop for Framebuffer {
