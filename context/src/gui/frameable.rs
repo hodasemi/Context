@@ -203,7 +203,10 @@ impl Frameable {
             VerticalAlign::Middle => height / 2,
             VerticalAlign::Bottom => height,
             _ => {
-                println!("vertical alignment in frameable not set");
+                if cfg!(debug_assertions) {
+                    println!("vertical alignment in frameable not set");
+                }
+
                 height / 2
             }
         };
@@ -213,7 +216,10 @@ impl Frameable {
             HorizontalAlign::Middle => width / 2,
             HorizontalAlign::Right => width,
             _ => {
-                println!("horizontal alignment in frameable not set");
+                if cfg!(debug_assertions) {
+                    println!("horizontal alignment in frameable not set");
+                }
+
                 width / 2
             }
         };
@@ -223,28 +229,30 @@ impl Frameable {
         let top = y_align as i32 + self.y_off.get();
         let bottom = top + self.h.get() as i32;
 
-        if left < 0 {
-            println!("left ({}) can't be below zero", left);
-        }
+        if cfg!(debug_assertions) {
+            if left < 0 {
+                println!("left ({}) can't be below zero", left);
+            }
 
-        if right > self.gui_handler.width() as i32 {
-            println!(
-                "right ({}) can't be above window width ({})",
-                right,
-                self.gui_handler.width()
-            );
-        }
+            if right > self.gui_handler.width() as i32 {
+                println!(
+                    "right ({}) can't be above window width ({})",
+                    right,
+                    self.gui_handler.width()
+                );
+            }
 
-        if top < 0 {
-            println!("top ({}) can't be below zero", top);
-        }
+            if top < 0 {
+                println!("top ({}) can't be below zero", top);
+            }
 
-        if bottom > self.gui_handler.height() as i32 {
-            println!(
-                "bottom ({}) can't be above window height ({})",
-                bottom,
-                self.gui_handler.height()
-            );
+            if bottom > self.gui_handler.height() as i32 {
+                println!(
+                    "bottom ({}) can't be above window height ({})",
+                    bottom,
+                    self.gui_handler.height()
+                );
+            }
         }
 
         self.left.set(left);
