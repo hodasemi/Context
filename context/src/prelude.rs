@@ -1,6 +1,6 @@
 // structures
 pub use crate::core::{
-    context::{Context, GameObject},
+    context::{Context, Event, GameObject},
     osspecific::osspecific::OsSpecificConfig,
 };
 
