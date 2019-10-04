@@ -15,7 +15,7 @@ use crate::prelude::*;
 
 use presentation::prelude::*;
 
-use std::cell::{Cell, RefCell, RefMut};
+use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::HashMap;
 use std::env::set_var;
 use std::path::Path;
@@ -665,28 +665,19 @@ impl Context {
         self.time.get()
     }
 
-    // pub(crate) fn presentation_core(&self) -> &PresentationCore {
-    //     &self.presentation
-    // }
-
-    // pub fn controllers(&self) -> VerboseResult<Ref<'_, Vec<Rc<RefCell<Controller>>>>> {
-    //     let controllers = self.connected_controllers.try_borrow()?;
-    //     Ok(controllers)
-    // }
+    pub fn controllers(&self) -> VerboseResult<Ref<'_, Vec<Rc<RefCell<Controller>>>>> {
+        self.presentation.event_system().controllers()
+    }
 
     pub fn active_controller(&self) -> VerboseResult<Option<Rc<RefCell<Controller>>>> {
         self.presentation.event_system().active_controller()
     }
 
-    // pub fn set_active_controller(&self, controller_id: u32) -> VerboseResult<()> {
-    //     for controller in self.connected_controllers.try_borrow()?.deref() {
-    //         if controller.try_borrow()?.id() == controller_id {
-    //             *self.selected_controller.try_borrow_mut()? = Some(controller.clone());
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
+    pub fn set_active_controller(&self, controller: &Rc<RefCell<Controller>>) -> VerboseResult<()> {
+        self.presentation
+            .event_system()
+            .set_active_controller(controller)
+    }
 }
 
 impl Context {

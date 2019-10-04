@@ -354,10 +354,7 @@ impl EventSystem {
         Ok(self.selected_controller.try_borrow()?.clone())
     }
 
-    pub fn set_active_controller(
-        &mut self,
-        controller: &Rc<RefCell<Controller>>,
-    ) -> VerboseResult<()> {
+    pub fn set_active_controller(&self, controller: &Rc<RefCell<Controller>>) -> VerboseResult<()> {
         if let Some(res) = self
             .connected_controllers
             .try_borrow()?
