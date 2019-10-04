@@ -3,6 +3,7 @@ use presentation::prelude::*;
 
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct VulkanCore {
     device: Arc<Device>,
     queue: Arc<Queue>,

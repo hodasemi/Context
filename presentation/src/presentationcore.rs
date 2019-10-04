@@ -11,6 +11,7 @@ use sdl2::Sdl;
 
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub enum PresentationBackend {
     Window(WindowSystemIntegration),
     OpenXR(OpenXRIntegration),
@@ -160,5 +161,11 @@ impl PresentationCore {
 
     pub fn backend(&self) -> &PresentationBackend {
         &self.backend
+    }
+}
+
+impl std::fmt::Debug for PresentationCore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "WindowSystemIntegration {{ sdl_context: SDL2, eventsystem: EventSystem, backend: {:#?} }}", self.backend)
     }
 }

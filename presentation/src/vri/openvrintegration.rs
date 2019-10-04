@@ -83,3 +83,9 @@ impl OpenVRIntegration {
         &self.system
     }
 }
+
+impl std::fmt::Debug for OpenVRIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "OpenVRIntegration {{ }}")
+    }
+}

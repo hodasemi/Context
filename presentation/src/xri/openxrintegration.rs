@@ -180,3 +180,9 @@ impl OpenXRIntegration {
         println!("{:#?}", system_properties.tracking_properties);
     }
 }
+
+impl std::fmt::Debug for OpenXRIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "OpenXRIntegration {{ }}")
+    }
+}

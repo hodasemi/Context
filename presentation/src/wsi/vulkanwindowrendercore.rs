@@ -252,3 +252,9 @@ impl RenderCore for VulkanWindowRenderCore {
         self.swapchain.height()
     }
 }
+
+impl std::fmt::Debug for VulkanWindowRenderCore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "VulkanWindowRenderCore {{ }}")
+    }
+}

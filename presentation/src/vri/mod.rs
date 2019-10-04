@@ -34,6 +34,12 @@ pub mod openvrintegration {
             unimplemented!()
         }
     }
+
+    impl std::fmt::Debug for OpenVRIntegration {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "OpenVRIntegration {{ }}")
+        }
+    }
 }
 
 #[cfg(feature = "OpenVR")]
@@ -141,6 +147,12 @@ pub mod openvrrendercore {
 
         fn height(&self) -> u32 {
             unimplemented!()
+        }
+    }
+
+    impl std::fmt::Debug for OpenVRRenderCore {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "OpenVRRenderCore {{ }}")
         }
     }
 }

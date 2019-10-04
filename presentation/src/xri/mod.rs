@@ -35,6 +35,12 @@ pub mod openxrintegration {
             unimplemented!()
         }
     }
+
+    impl std::fmt::Debug for OpenXRIntegration {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "OpenXRIntegration {{ }}")
+        }
+    }
 }
 
 #[cfg(feature = "OpenXR")]
@@ -138,6 +144,12 @@ pub mod openxrrendercore {
 
         fn height(&self) -> u32 {
             unimplemented!()
+        }
+    }
+
+    impl std::fmt::Debug for OpenXRRenderCore {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "OpenXRRenderCore {{ }}")
         }
     }
 }

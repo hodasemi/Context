@@ -16,7 +16,7 @@ pub trait TScene {
     fn resize(&self) -> VerboseResult<()>;
 }
 
-pub trait RenderCore {
+pub trait RenderCore: std::fmt::Debug {
     fn next_frame(&self) -> VerboseResult<bool>;
 
     // scene handling

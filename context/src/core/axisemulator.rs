@@ -2,6 +2,7 @@ use presentation::prelude::*;
 
 use cgmath::vec2;
 
+#[derive(Debug)]
 pub struct AxisEmulator {
     controller_axis: ControllerAxis,
 

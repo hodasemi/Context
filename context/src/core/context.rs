@@ -518,6 +518,8 @@ impl Default for ContextBuilder {
 }
 
 pub trait GameObject {
+    fn name(&self) -> &str;
+
     fn update(&self) -> VerboseResult<()>;
 
     fn on_key_down(&self, input: InputMap) -> VerboseResult<()>;
@@ -936,5 +938,11 @@ impl Context {
         }
 
         Ok(())
+    }
+}
+
+impl std::fmt::Debug for Context {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Context {{ TODO }}")
     }
 }

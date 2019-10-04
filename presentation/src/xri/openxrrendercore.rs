@@ -506,3 +506,9 @@ impl RenderCore for OpenXRRenderCore {
         self.height
     }
 }
+
+impl std::fmt::Debug for OpenXRRenderCore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "OpenXRRenderCore {{ }}")
+    }
+}

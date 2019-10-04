@@ -332,6 +332,12 @@ impl WindowSystemIntegration {
     }
 }
 
+impl std::fmt::Debug for WindowSystemIntegration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "WindowSystemIntegration {{ }}")
+    }
+}
+
 /// helper function to wrap SDL2 error types
 #[inline]
 fn set_window_size(window: &mut sdl2::video::Window, width: u32, height: u32) -> VerboseResult<()> {

@@ -11,7 +11,7 @@ use crate::core::osspecific::linux;
 
 #[cfg(target_os = "linux")]
 pub struct OsSpecific {
-    _gamemode: Option<linux::gamemode::GameMode>,
+    gamemode: Option<linux::gamemode::GameMode>,
 }
 
 #[cfg(target_os = "linux")]
@@ -29,9 +29,19 @@ impl OsSpecific {
             None
         };
 
-        OsSpecific {
-            _gamemode: gamemode,
-        }
+        OsSpecific { gamemode: gamemode }
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl std::fmt::Debug for OsSpecific {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let some = match &self.gamemode {
+            Some(_) => "Some",
+            None => "None",
+        };
+
+        write!(f, "OsSpecific {{ gamemode: {} }}", some)
     }
 }
 
@@ -50,4 +60,11 @@ impl OsSpecific {
     pub fn enable(&self) {}
 
     pub fn disable(&self) {}
+}
+
+#[cfg(not(target_os = "linux"))]
+impl std::fmt::Debug for OsSpecific {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "OsSpecific {{ }}")
+    }
 }

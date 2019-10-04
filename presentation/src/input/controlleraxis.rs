@@ -1,6 +1,6 @@
 use cgmath::{Vector2, Zero};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct ControllerAxis {
     pub left_stick: Vector2<f32>,
     pub right_stick: Vector2<f32>,

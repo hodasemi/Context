@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Time {
     initial_time: f64,
 }
