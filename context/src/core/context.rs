@@ -13,7 +13,7 @@ use super::soundhandler::SoundHandler;
 
 use crate::prelude::*;
 
-use presentation::prelude::*;
+use presentation::{input::eventsystem::PresentationEventType, prelude::*};
 
 use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::HashMap;
@@ -21,6 +21,443 @@ use std::env::set_var;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
+
+pub enum Event {
+    MouseMotion(u32, u32),
+    MouseButtonDown(MouseButton),
+    MouseButtonUp(MouseButton),
+    MouseWheel(),
+
+    KeyDown(InputMap),
+    KeyUp(InputMap),
+    AxisChanged(ControllerAxis),
+
+    ControllerAdded(Rc<RefCell<Controller>>),
+    ControllerRemoved(Rc<RefCell<Controller>>),
+}
+
+pub trait GameObject {
+    fn name(&self) -> &str;
+
+    fn update(&self) -> VerboseResult<()>;
+
+    fn event(&self, event: Event) -> VerboseResult<()>;
+}
+
+pub struct Context {
+    core: VulkanCore,
+    pub(crate) presentation: PresentationCore,
+    render_core: Box<dyn RenderCore>,
+
+    #[cfg(feature = "audio")]
+    sound_handler: RefCell<SoundHandler>,
+
+    #[cfg(feature = "user_interface")]
+    gui_handler: Arc<GuiHandler>,
+
+    os_specific: OsSpecific,
+
+    timer: Time,
+    time: Cell<f64>,
+    exit_call: Cell<bool>,
+
+    // gui
+    controller_axis_emulator: RefCell<AxisEmulator>,
+    keyboard_input: HashMap<Keycode, InputMap>,
+    direction_mapping: HashMap<Keycode, GuiDirection>,
+
+    controller_menu_input: HashMap<ControllerButton, InputMap>,
+    controller_game_input: HashMap<ControllerButton, InputMap>,
+
+    game_object: RefCell<Option<Arc<dyn GameObject>>>,
+
+    fallback: RefCell<Option<Box<dyn Fn(&str) -> VerboseResult<()>>>>,
+}
+
+impl Context {
+    pub fn new() -> ContextBuilder {
+        ContextBuilder::default()
+    }
+
+    pub fn set_game_object(&self, game_object: Option<Arc<dyn GameObject>>) -> VerboseResult<()> {
+        *self.game_object.try_borrow_mut()? = game_object;
+
+        Ok(())
+    }
+
+    pub fn set_cursor<T: AsRef<Path>>(&self, bmp: T) -> VerboseResult<()> {
+        match self.presentation.backend() {
+            PresentationBackend::Window(wsi) => wsi.set_cursor(bmp)?,
+            PresentationBackend::OpenXR(_xri) => (),
+            PresentationBackend::OpenVR(_vri) => (),
+        };
+
+        Ok(())
+    }
+
+    pub fn toggle_fullscreen(&self) -> VerboseResult<()> {
+        match self.presentation.backend() {
+            PresentationBackend::Window(wsi) => wsi.set_fullscreen(!wsi.is_fullscreen()?)?,
+            PresentationBackend::OpenXR(_xri) => (),
+            PresentationBackend::OpenVR(_vri) => (),
+        };
+
+        Ok(())
+    }
+
+    #[cfg(feature = "audio")]
+    pub fn sound(&self) -> VerboseResult<RefMut<'_, SoundHandler>> {
+        Ok(self.sound_handler.try_borrow_mut()?)
+    }
+
+    #[cfg(feature = "user_interface")]
+    pub fn gui_handler(&self) -> &Arc<GuiHandler> {
+        &self.gui_handler
+    }
+
+    pub fn run(&self) -> VerboseResult<()> {
+        'running: loop {
+            if self.exit_call.get() {
+                break 'running;
+            }
+
+            match self.presentation.event_system().poll_events() {
+                Ok(res) => {
+                    if !res {
+                        break 'running;
+                    }
+                }
+                Err(err) => {
+                    if let Some(fallback) = self.fallback.try_borrow()?.as_ref() {
+                        (fallback)(&err.message())?;
+                    }
+                }
+            }
+
+            self.time.set(self.timer.time());
+
+            if let Err(err) = self.update() {
+                if let Some(fallback) = &self.fallback.try_borrow()?.as_ref() {
+                    (fallback)(&err.message())?;
+                }
+            }
+
+            if !self.render_core.next_frame()? {
+                break 'running;
+            }
+        }
+
+        self.set_game_object(None)?;
+        self.render_core.clear_scenes()?;
+
+        Ok(())
+    }
+
+    pub fn render_core(&self) -> &Box<dyn RenderCore> {
+        &self.render_core
+    }
+
+    pub fn set_fallback(
+        &self,
+        fallback: Box<dyn Fn(&str) -> VerboseResult<()>>,
+    ) -> VerboseResult<()> {
+        *self.fallback.try_borrow_mut()? = Some(fallback);
+
+        Ok(())
+    }
+
+    pub fn close(&self) {
+        self.exit_call.set(true);
+    }
+
+    pub fn device(&self) -> &Arc<Device> {
+        &self.core.device()
+    }
+
+    pub fn queue(&self) -> &Arc<Queue> {
+        self.core.queue()
+    }
+
+    pub fn time(&self) -> f64 {
+        self.time.get()
+    }
+
+    pub fn controllers(&self) -> VerboseResult<Ref<'_, Vec<Rc<RefCell<Controller>>>>> {
+        self.presentation.event_system().controllers()
+    }
+
+    pub fn active_controller(&self) -> VerboseResult<Option<Rc<RefCell<Controller>>>> {
+        self.presentation.event_system().active_controller()
+    }
+
+    pub fn set_active_controller(&self, controller: &Rc<RefCell<Controller>>) -> VerboseResult<()> {
+        self.presentation
+            .event_system()
+            .set_active_controller(controller)
+    }
+}
+
+impl Context {
+    #[inline]
+    pub(crate) fn controller_added(
+        &self,
+        controller: Rc<RefCell<Controller>>,
+    ) -> VerboseResult<()> {
+        if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+            game_object.event(Event::ControllerAdded(controller))?;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn controller_removed(
+        &self,
+        controller: Rc<RefCell<Controller>>,
+    ) -> VerboseResult<()> {
+        if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+            game_object.event(Event::ControllerRemoved(controller))?;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn update(&self) -> VerboseResult<()> {
+        if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+            if let Err(err) = game_object.update() {
+                return Err(err);
+            }
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn key_up_event(&self, keycode: Keycode) -> VerboseResult<()> {
+        if let Some(direction) = self.direction_mapping.get(&keycode) {
+            if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+                let mut controller_axis_emulator =
+                    self.controller_axis_emulator.try_borrow_mut()?;
+
+                controller_axis_emulator.key_up(*direction);
+
+                game_object.event(Event::AxisChanged(
+                    controller_axis_emulator.controller_axis(),
+                ))?;
+            }
+
+            return Ok(());
+        }
+
+        if !self.keyboard_input.contains_key(&keycode) {
+            return Ok(());
+        }
+
+        if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+            game_object.event(Event::KeyUp(self.keyboard_input[&keycode]))?;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn key_down_event(&self, keycode: Keycode) -> VerboseResult<()> {
+        if let Some(direction) = self.direction_mapping.get(&keycode) {
+            #[cfg(feature = "user_interface")]
+            {
+                if self.gui_handler.update_selection(*direction)? {
+                    return Ok(());
+                }
+            }
+
+            if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+                let mut controller_axis_emulator =
+                    self.controller_axis_emulator.try_borrow_mut()?;
+
+                controller_axis_emulator.key_down(*direction);
+
+                game_object.event(Event::AxisChanged(
+                    controller_axis_emulator.controller_axis(),
+                ))?;
+            }
+
+            return Ok(());
+        }
+
+        if let Some(mapped_input) = self.keyboard_input.get(&keycode) {
+            #[cfg(feature = "user_interface")]
+            {
+                if keycode == Keycode::Backspace && self.gui_handler.remove_char()? {
+                    return Ok(());
+                }
+            }
+
+            if *mapped_input == InputMap::A {
+                #[cfg(feature = "user_interface")]
+                match self.gui_handler.accept_selection() {
+                    Ok(success) => {
+                        if success {
+                            return Ok(());
+                        }
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                }
+            } else if *mapped_input == InputMap::RightButton {
+                #[cfg(feature = "user_interface")]
+                match self.gui_handler.next_tab_topgui() {
+                    Ok(success) => {
+                        if success {
+                            return Ok(());
+                        }
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                }
+            } else if *mapped_input == InputMap::LeftButton {
+                #[cfg(feature = "user_interface")]
+                match self.gui_handler.previous_tab_topgui() {
+                    Ok(success) => {
+                        if success {
+                            return Ok(());
+                        }
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                }
+            }
+
+            if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+                game_object.event(Event::KeyDown(*mapped_input))?;
+            }
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn button_up_event(&self, button: ControllerButton) -> VerboseResult<()> {
+        #[cfg(feature = "user_interface")]
+        {
+            if self.gui_handler.check_navigatable()? {
+                if let Some(mapped_input) = self._controller_menu_input.get(&button) {
+                    if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+                        game_object.event(Event::KeyUp(*mapped_input))?;
+                    }
+                }
+            } else if let Some(mapped_input) = self.controller_game_input.get(&button) {
+                if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+                    game_object.event(Event::KeyUp(*mapped_input))?;
+                }
+            }
+        }
+
+        #[cfg(not(feature = "user_interface"))]
+        {
+            if let Some(mapped_input) = self.controller_game_input.get(&button) {
+                if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+                    game_object.event(Event::KeyUp(*mapped_input))?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn button_down_event(&self, button: ControllerButton) -> VerboseResult<()> {
+        #[cfg(feature = "user_interface")]
+        {
+            if self.gui_handler.check_navigatable()? {
+                if let Some(mapped_input) = self._controller_menu_input.get(&button) {
+                    if *mapped_input == InputMap::A {
+                        match self.gui_handler.accept_selection() {
+                            Ok(success) => {
+                                if success {
+                                    return Ok(());
+                                }
+                            }
+                            Err(err) => {
+                                return Err(err);
+                            }
+                        }
+                    } else if *mapped_input == InputMap::B {
+                        match self.gui_handler.decline_topgui() {
+                            Ok(success) => {
+                                if success {
+                                    return Ok(());
+                                }
+                            }
+                            Err(err) => {
+                                return Err(err);
+                            }
+                        }
+                    } else if *mapped_input == InputMap::RightButton {
+                        match self.gui_handler.next_tab_topgui() {
+                            Ok(success) => {
+                                if success {
+                                    return Ok(());
+                                }
+                            }
+                            Err(err) => {
+                                return Err(err);
+                            }
+                        }
+                    } else if *mapped_input == InputMap::LeftButton {
+                        match self.gui_handler.previous_tab_topgui() {
+                            Ok(success) => {
+                                if success {
+                                    return Ok(());
+                                }
+                            }
+                            Err(err) => {
+                                return Err(err);
+                            }
+                        }
+                    }
+
+                    if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+                        game_object.event(Event::KeyDown(*mapped_input))?;
+                    }
+                }
+            } else if let Some(mapped_input) = self.controller_game_input.get(&button) {
+                if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+                    game_object.event(Event::KeyDown(*mapped_input))?;
+                }
+            }
+        }
+
+        #[cfg(not(feature = "user_interface"))]
+        {
+            if let Some(mapped_input) = self.controller_game_input.get(&button) {
+                if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+                    game_object.event(Event::KeyDown(*mapped_input))?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn axis_event(&self, controller: &Controller) -> VerboseResult<()> {
+        if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
+            game_object.event(Event::AxisChanged(controller.controller_axis()))?;
+        }
+
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for Context {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Context {{ TODO }}")
+    }
+}
 
 pub struct ContextBuilder {
     #[cfg(feature = "audio")]
@@ -60,6 +497,61 @@ pub struct ContextBuilder {
     mapped_keyboard_input: HashMap<Keycode, InputMap>,
     mapped_controller_menu_input: HashMap<ControllerButton, InputMap>,
     mapped_controller_game_input: HashMap<ControllerButton, InputMap>,
+}
+
+impl Default for ContextBuilder {
+    fn default() -> Self {
+        ContextBuilder {
+            #[cfg(feature = "audio")]
+            volume_info: None,
+
+            #[cfg(any(feature = "openvr", feature = "openxr"))]
+            vr_mode: None,
+
+            #[cfg(feature = "openxr")]
+            openxr_runtime_json: None,
+
+            #[cfg(feature = "user_interface")]
+            gui_info: None,
+
+            // app info
+            app_info: ApplicationInfo {
+                application_name: "not set".to_string(),
+                application_version: 0,
+                engine_name: "not set".to_string(),
+                engine_version: 0,
+            },
+
+            // window information
+            window_create_info: WindowCreateInfo {
+                title: "Vulkan Application".to_string(),
+                width: 800,
+                height: 600,
+                fullscreen: false,
+                requested_display: None,
+            },
+
+            // os specifics
+            os_specific_config: OsSpecificConfig::default(),
+
+            // vulkan core settings
+            sample_count: VK_SAMPLE_COUNT_1_BIT,
+            enable_raytracing: false,
+            vsync: false,
+
+            // vulkan debug extension selection
+            vulkan_debug_info: VulkanDebugInfo::default(),
+
+            // input settings
+            enable_mouse: false,
+            enable_keyboard: false,
+            enable_controller: false,
+            controller_deadzone: 0.2,
+            mapped_keyboard_input: HashMap::new(),
+            mapped_controller_menu_input: HashMap::new(),
+            mapped_controller_game_input: HashMap::new(),
+        }
+    }
 }
 
 impl ContextBuilder {
@@ -231,7 +723,7 @@ impl ContextBuilder {
             #[cfg(feature = "audio")]
             sound_handler: RefCell::new(self.create_sound_handler()?),
 
-            _os_specific: os_specific,
+            os_specific,
 
             timer: Time::new(),
             time: Cell::new(0.0),
@@ -241,7 +733,7 @@ impl ContextBuilder {
             keyboard_input: self.mapped_keyboard_input,
             direction_mapping,
 
-            _controller_menu_input: self.mapped_controller_menu_input,
+            controller_menu_input: self.mapped_controller_menu_input,
             controller_game_input: self.mapped_controller_game_input,
 
             game_object: RefCell::new(None),
@@ -249,115 +741,87 @@ impl ContextBuilder {
             fallback: RefCell::new(None),
         });
 
+        {
+            let weak_context = Arc::downgrade(&context);
+
+            let callback = move |event| {
+                if let Some(context) = weak_context.upgrade() {
+                    match event {
+                        PresentationEventType::MouseMotion(x, y) => {
+                            #[cfg(feature = "user_interface")]
+                            context.gui_handler.set_mouse_pos(x, y)?;
+                        }
+                        PresentationEventType::MouseButtonDown(mouse_button) => {
+                            #[cfg(feature = "user_interface")]
+                            {
+                                if context.gui_handler.mouse_down(mouse_button)? {
+                                    // some event
+                                }
+                            }
+                        }
+                        PresentationEventType::MouseButtonUp(mouse_button) => {
+                            #[cfg(feature = "user_interface")]
+                            {
+                                if context.gui_handler.mouse_up(mouse_button)? {
+                                    // some event
+                                }
+                            }
+                        }
+                        PresentationEventType::MouseWheel() => unimplemented!(),
+                        PresentationEventType::KeyDown(keycode) => {
+                            context.key_down_event(keycode)?;
+                        }
+                        PresentationEventType::KeyUp(keycode) => {
+                            context.key_up_event(keycode)?;
+                        }
+                        PresentationEventType::ControllerButtonDown(button) => {
+                            context.button_down_event(button)?;
+                        }
+                        PresentationEventType::ControllerButtonUp(button) => {
+                            context.button_up_event(button)?;
+                        }
+                        PresentationEventType::ControllerAxis(controller) => {
+                            let controller = controller.try_borrow()?;
+
+                            #[cfg(feature = "user_interface")]
+                            {
+                                context
+                                    .gui_handler
+                                    .update_selection(controller.direction())?;
+
+                                if !context.gui_handler.check_navigatable()? {
+                                    context.axis_event(&controller)?
+                                }
+                            }
+
+                            #[cfg(not(feature = "user_interface"))]
+                            context.axis_event(&controller)?;
+                        }
+                        PresentationEventType::ControllerAdded(controller) => {
+                            context.controller_added(controller)?
+                        }
+                        PresentationEventType::ControllerRemoved(controller) => {
+                            context.controller_removed(controller)?
+                        }
+                    }
+                }
+
+                Ok(())
+            };
+
+            context.presentation.event_system().set_callback(callback)?;
+        }
+
         if self.enable_mouse {
-            context.presentation.event_system().enable_mouse(
-                {
-                    let _context = context.clone();
-
-                    Box::new(move |_x, _y| {
-                        #[cfg(feature = "user_interface")]
-                        _context.gui_handler.set_mouse_pos(_x, _y)?;
-
-                        Ok(())
-                    })
-                },
-                {
-                    let _context = context.clone();
-
-                    Box::new(move |_mouse_button| {
-                        #[cfg(feature = "user_interface")]
-                        {
-                            if _context.gui_handler.mouse_down(_mouse_button)? {
-                                // some event
-                            }
-                        }
-
-                        Ok(())
-                    })
-                },
-                {
-                    let _context = context.clone();
-
-                    Box::new(move |_mouse_button| {
-                        #[cfg(feature = "user_interface")]
-                        {
-                            if _context.gui_handler.mouse_up(_mouse_button)? {
-                                // some event
-                            }
-                        }
-
-                        Ok(())
-                    })
-                },
-            )?;
+            context.presentation.event_system().enable_mouse()?;
         }
 
         if self.enable_keyboard {
-            context.presentation.event_system().enable_keyboard(
-                {
-                    let context = context.clone();
-
-                    Box::new(move |key| {
-                        context.key_down_event(key)?;
-
-                        Ok(())
-                    })
-                },
-                {
-                    let context = context.clone();
-
-                    Box::new(move |key| {
-                        context.key_up_event(key)?;
-
-                        Ok(())
-                    })
-                },
-            )?;
+            context.presentation.event_system().enable_keyboard()?;
         }
 
         if self.enable_controller {
-            context.presentation.event_system().enable_controller(
-                {
-                    let context = context.clone();
-
-                    Box::new(move |button| {
-                        context.button_down_event(button)?;
-
-                        Ok(())
-                    })
-                },
-                {
-                    let context = context.clone();
-
-                    Box::new(move |button| {
-                        context.button_up_event(button)?;
-
-                        Ok(())
-                    })
-                },
-                {
-                    let context = context.clone();
-
-                    Box::new(move |controller| {
-                        #[cfg(feature = "user_interface")]
-                        context
-                            .gui_handler
-                            .update_selection(controller.direction())?;
-
-                        #[cfg(feature = "user_interface")]
-                        {
-                            if !context.gui_handler.check_navigatable()? {
-                                context.axis_event(controller)?
-                            }
-                        }
-
-                        #[cfg(not(feature = "user_interface"))]
-                        context.axis_event(controller)?;
-
-                        Ok(())
-                    })
-                },
-            )?;
+            context.presentation.event_system().enable_controller()?;
         }
 
         Ok(context)
@@ -459,481 +923,5 @@ impl ContextBuilder {
                 create_error!("No gui info present, consider disabling 'user_interface' feature")
             }
         }
-    }
-}
-
-impl Default for ContextBuilder {
-    fn default() -> Self {
-        ContextBuilder {
-            #[cfg(feature = "audio")]
-            volume_info: None,
-
-            #[cfg(any(feature = "openvr", feature = "openxr"))]
-            vr_mode: None,
-
-            #[cfg(feature = "openxr")]
-            openxr_runtime_json: None,
-
-            #[cfg(feature = "user_interface")]
-            gui_info: None,
-
-            // app info
-            app_info: ApplicationInfo {
-                application_name: "not set".to_string(),
-                application_version: 0,
-                engine_name: "not set".to_string(),
-                engine_version: 0,
-            },
-
-            // window information
-            window_create_info: WindowCreateInfo {
-                title: "Vulkan Application".to_string(),
-                width: 800,
-                height: 600,
-                fullscreen: false,
-                requested_display: None,
-            },
-
-            // os specifics
-            os_specific_config: OsSpecificConfig::default(),
-
-            // vulkan core settings
-            sample_count: VK_SAMPLE_COUNT_1_BIT,
-            enable_raytracing: false,
-            vsync: false,
-
-            // vulkan debug extension selection
-            vulkan_debug_info: VulkanDebugInfo::default(),
-
-            // input settings
-            enable_mouse: false,
-            enable_keyboard: false,
-            enable_controller: false,
-            controller_deadzone: 0.2,
-            mapped_keyboard_input: HashMap::new(),
-            mapped_controller_menu_input: HashMap::new(),
-            mapped_controller_game_input: HashMap::new(),
-        }
-    }
-}
-
-pub trait GameObject {
-    fn name(&self) -> &str;
-
-    fn update(&self) -> VerboseResult<()>;
-
-    fn on_key_down(&self, input: InputMap) -> VerboseResult<()>;
-    fn on_key_up(&self, input: InputMap) -> VerboseResult<()>;
-    fn on_axis(&self, axis: ControllerAxis) -> VerboseResult<()>;
-}
-
-pub struct Context {
-    core: VulkanCore,
-    presentation: PresentationCore,
-    render_core: Box<dyn RenderCore>,
-
-    #[cfg(feature = "audio")]
-    sound_handler: RefCell<SoundHandler>,
-
-    #[cfg(feature = "user_interface")]
-    gui_handler: Arc<GuiHandler>,
-
-    _os_specific: OsSpecific,
-
-    timer: Time,
-    time: Cell<f64>,
-    exit_call: Cell<bool>,
-
-    // gui
-    controller_axis_emulator: RefCell<AxisEmulator>,
-    keyboard_input: HashMap<Keycode, InputMap>,
-    direction_mapping: HashMap<Keycode, GuiDirection>,
-
-    _controller_menu_input: HashMap<ControllerButton, InputMap>,
-    controller_game_input: HashMap<ControllerButton, InputMap>,
-
-    game_object: RefCell<Option<Arc<dyn GameObject>>>,
-
-    fallback: RefCell<Option<Box<dyn Fn(&str) -> VerboseResult<()>>>>,
-}
-
-impl Context {
-    pub fn new() -> ContextBuilder {
-        ContextBuilder::default()
-    }
-
-    pub fn set_game_object(&self, game_object: Option<Arc<dyn GameObject>>) -> VerboseResult<()> {
-        *self.game_object.try_borrow_mut()? = game_object;
-
-        Ok(())
-    }
-
-    pub fn set_cursor<T: AsRef<Path>>(&self, bmp: T) -> VerboseResult<()> {
-        match self.presentation.backend() {
-            PresentationBackend::Window(wsi) => wsi.set_cursor(bmp)?,
-            PresentationBackend::OpenXR(_xri) => (),
-            PresentationBackend::OpenVR(_vri) => (),
-        };
-
-        Ok(())
-    }
-
-    pub fn toggle_fullscreen(&self) -> VerboseResult<()> {
-        match self.presentation.backend() {
-            PresentationBackend::Window(wsi) => wsi.set_fullscreen(!wsi.is_fullscreen()?)?,
-            PresentationBackend::OpenXR(_xri) => (),
-            PresentationBackend::OpenVR(_vri) => (),
-        };
-
-        Ok(())
-    }
-
-    #[cfg(feature = "audio")]
-    pub fn sound(&self) -> VerboseResult<RefMut<'_, SoundHandler>> {
-        Ok(self.sound_handler.try_borrow_mut()?)
-    }
-
-    #[cfg(feature = "user_interface")]
-    pub fn gui_handler(&self) -> &Arc<GuiHandler> {
-        &self.gui_handler
-    }
-
-    pub fn run(&self) -> VerboseResult<()> {
-        'running: loop {
-            if self.exit_call.get() {
-                break 'running;
-            }
-
-            match self.presentation.event_system().poll_events() {
-                Ok(res) => {
-                    if !res {
-                        break 'running;
-                    }
-                }
-                Err(err) => {
-                    if let Some(fallback) = self.fallback.try_borrow()?.as_ref() {
-                        (fallback)(&err.message())?;
-                    }
-                }
-            }
-
-            self.time.set(self.timer.time());
-
-            if let Err(err) = self.update() {
-                if let Some(fallback) = &self.fallback.try_borrow()?.as_ref() {
-                    (fallback)(&err.message())?;
-                }
-            }
-
-            if !self.render_core.next_frame()? {
-                break 'running;
-            }
-        }
-
-        self.set_game_object(None)?;
-        self.render_core.clear_scenes()?;
-
-        Ok(())
-    }
-
-    pub fn render_core(&self) -> &Box<dyn RenderCore> {
-        &self.render_core
-    }
-
-    pub fn set_fallback(
-        &self,
-        fallback: Box<dyn Fn(&str) -> VerboseResult<()>>,
-    ) -> VerboseResult<()> {
-        *self.fallback.try_borrow_mut()? = Some(fallback);
-
-        Ok(())
-    }
-
-    pub fn close(&self) {
-        self.exit_call.set(true);
-    }
-
-    pub fn device(&self) -> &Arc<Device> {
-        &self.core.device()
-    }
-
-    pub fn queue(&self) -> &Arc<Queue> {
-        self.core.queue()
-    }
-
-    pub fn time(&self) -> f64 {
-        self.time.get()
-    }
-
-    pub fn controllers(&self) -> VerboseResult<Ref<'_, Vec<Rc<RefCell<Controller>>>>> {
-        self.presentation.event_system().controllers()
-    }
-
-    pub fn active_controller(&self) -> VerboseResult<Option<Rc<RefCell<Controller>>>> {
-        self.presentation.event_system().active_controller()
-    }
-
-    pub fn set_active_controller(&self, controller: &Rc<RefCell<Controller>>) -> VerboseResult<()> {
-        self.presentation
-            .event_system()
-            .set_active_controller(controller)
-    }
-}
-
-impl Context {
-    #[inline]
-    fn update(&self) -> VerboseResult<()> {
-        if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-            if let Err(err) = game_object.update() {
-                return Err(err);
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline]
-    fn key_up_event(&self, keycode: Keycode) -> VerboseResult<()> {
-        if let Some(direction) = self.direction_mapping.get(&keycode) {
-            if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-                let mut controller_axis_emulator =
-                    self.controller_axis_emulator.try_borrow_mut()?;
-
-                controller_axis_emulator.key_up(*direction);
-
-                if let Err(err) = game_object.on_axis(controller_axis_emulator.controller_axis()) {
-                    return Err(err);
-                }
-            }
-
-            return Ok(());
-        }
-
-        if !self.keyboard_input.contains_key(&keycode) {
-            return Ok(());
-        }
-
-        if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-            let mapped_input = &self.keyboard_input[&keycode];
-
-            if let Err(err) = game_object.on_key_up(*mapped_input) {
-                return Err(err);
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline]
-    fn key_down_event(&self, keycode: Keycode) -> VerboseResult<()> {
-        if let Some(direction) = self.direction_mapping.get(&keycode) {
-            #[cfg(feature = "user_interface")]
-            {
-                if self.gui_handler.update_selection(*direction)? {
-                    return Ok(());
-                }
-            }
-
-            if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-                let mut controller_axis_emulator =
-                    self.controller_axis_emulator.try_borrow_mut()?;
-
-                controller_axis_emulator.key_down(*direction);
-
-                if let Err(err) = game_object.on_axis(controller_axis_emulator.controller_axis()) {
-                    return Err(err);
-                }
-            }
-
-            return Ok(());
-        }
-
-        if let Some(mapped_input) = self.keyboard_input.get(&keycode) {
-            #[cfg(feature = "user_interface")]
-            {
-                if keycode == Keycode::Backspace && self.gui_handler.remove_char()? {
-                    return Ok(());
-                }
-            }
-
-            if *mapped_input == InputMap::A {
-                #[cfg(feature = "user_interface")]
-                match self.gui_handler.accept_selection() {
-                    Ok(success) => {
-                        if success {
-                            return Ok(());
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            } else if *mapped_input == InputMap::RightButton {
-                #[cfg(feature = "user_interface")]
-                match self.gui_handler.next_tab_topgui() {
-                    Ok(success) => {
-                        if success {
-                            return Ok(());
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            } else if *mapped_input == InputMap::LeftButton {
-                #[cfg(feature = "user_interface")]
-                match self.gui_handler.previous_tab_topgui() {
-                    Ok(success) => {
-                        if success {
-                            return Ok(());
-                        }
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            }
-
-            if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-                if let Err(err) = game_object.on_key_down(*mapped_input) {
-                    return Err(err);
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline]
-    fn button_up_event(&self, button: ControllerButton) -> VerboseResult<()> {
-        #[cfg(feature = "user_interface")]
-        {
-            if self.gui_handler.check_navigatable()? {
-                if let Some(mapped_input) = self._controller_menu_input.get(&button) {
-                    if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-                        if let Err(err) = game_object.on_key_up(*mapped_input) {
-                            return Err(err);
-                        }
-                    }
-                }
-            } else if let Some(mapped_input) = self.controller_game_input.get(&button) {
-                if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-                    if let Err(err) = game_object.on_key_up(*mapped_input) {
-                        return Err(err);
-                    }
-                }
-            }
-        }
-
-        #[cfg(not(feature = "user_interface"))]
-        {
-            if let Some(mapped_input) = self.controller_game_input.get(&button) {
-                if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-                    if let Err(err) = game_object.on_key_up(*mapped_input) {
-                        return Err(err);
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline]
-    fn button_down_event(&self, button: ControllerButton) -> VerboseResult<()> {
-        #[cfg(feature = "user_interface")]
-        {
-            if self.gui_handler.check_navigatable()? {
-                if let Some(mapped_input) = self._controller_menu_input.get(&button) {
-                    if *mapped_input == InputMap::A {
-                        match self.gui_handler.accept_selection() {
-                            Ok(success) => {
-                                if success {
-                                    return Ok(());
-                                }
-                            }
-                            Err(err) => {
-                                return Err(err);
-                            }
-                        }
-                    } else if *mapped_input == InputMap::B {
-                        match self.gui_handler.decline_topgui() {
-                            Ok(success) => {
-                                if success {
-                                    return Ok(());
-                                }
-                            }
-                            Err(err) => {
-                                return Err(err);
-                            }
-                        }
-                    } else if *mapped_input == InputMap::RightButton {
-                        match self.gui_handler.next_tab_topgui() {
-                            Ok(success) => {
-                                if success {
-                                    return Ok(());
-                                }
-                            }
-                            Err(err) => {
-                                return Err(err);
-                            }
-                        }
-                    } else if *mapped_input == InputMap::LeftButton {
-                        match self.gui_handler.previous_tab_topgui() {
-                            Ok(success) => {
-                                if success {
-                                    return Ok(());
-                                }
-                            }
-                            Err(err) => {
-                                return Err(err);
-                            }
-                        }
-                    }
-
-                    if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-                        if let Err(err) = game_object.on_key_down(*mapped_input) {
-                            return Err(err);
-                        }
-                    }
-                }
-            } else if let Some(mapped_input) = self.controller_game_input.get(&button) {
-                if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-                    if let Err(err) = game_object.on_key_down(*mapped_input) {
-                        return Err(err);
-                    }
-                }
-            }
-        }
-
-        #[cfg(not(feature = "user_interface"))]
-        {
-            if let Some(mapped_input) = self.controller_game_input.get(&button) {
-                if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-                    if let Err(err) = game_object.on_key_down(*mapped_input) {
-                        return Err(err);
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline]
-    fn axis_event(&self, controller: &Controller) -> VerboseResult<()> {
-        if let Some(game_object) = &self.game_object.try_borrow()?.as_ref() {
-            if let Err(err) = game_object.on_axis(controller.controller_axis()) {
-                return Err(err);
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl std::fmt::Debug for Context {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Context {{ TODO }}")
     }
 }

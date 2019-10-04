@@ -1,6 +1,6 @@
 use sdl2;
 use sdl2::controller::Button;
-use sdl2::event::{Event, EventType};
+use sdl2::event::{Event, EventType as SdlEventType};
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::{MouseButton as SdlMouseButton, MouseUtil};
 use sdl2::EventPump;
@@ -15,6 +15,25 @@ use std::rc::Rc;
 use super::controller::Controller;
 use super::mousebutton::MouseButton;
 
+pub enum PresentationEventType {
+    // mouse events
+    MouseMotion(u32, u32),
+    MouseButtonDown(MouseButton),
+    MouseButtonUp(MouseButton),
+    MouseWheel(),
+
+    // keyboard events
+    KeyDown(Keycode),
+    KeyUp(Keycode),
+
+    // controller events
+    ControllerAxis(Rc<RefCell<Controller>>),
+    ControllerButtonDown(Button),
+    ControllerButtonUp(Button),
+    ControllerAdded(Rc<RefCell<Controller>>),
+    ControllerRemoved(Rc<RefCell<Controller>>),
+}
+
 pub struct EventSystem {
     event_pump: RefCell<EventPump>,
     mouse: MouseUtil,
@@ -25,16 +44,7 @@ pub struct EventSystem {
     selected_controller: RefCell<Option<Rc<RefCell<Controller>>>>,
     connected_controllers: RefCell<Vec<Rc<RefCell<Controller>>>>,
 
-    mouse_motion_event: RefCell<Option<Box<dyn Fn(u32, u32) -> VerboseResult<()>>>>,
-    mouse_down_event: RefCell<Option<Box<dyn Fn(MouseButton) -> VerboseResult<()>>>>,
-    mouse_up_event: RefCell<Option<Box<dyn Fn(MouseButton) -> VerboseResult<()>>>>,
-
-    key_down_event: RefCell<Option<Box<dyn Fn(Keycode) -> VerboseResult<()>>>>,
-    key_up_event: RefCell<Option<Box<dyn Fn(Keycode) -> VerboseResult<()>>>>,
-
-    button_down_event: RefCell<Option<Box<dyn Fn(Button) -> VerboseResult<()>>>>,
-    button_up_event: RefCell<Option<Box<dyn Fn(Button) -> VerboseResult<()>>>>,
-    axis_changed_event: RefCell<Option<Box<dyn Fn(&Controller) -> VerboseResult<()>>>>,
+    event_callback: RefCell<Box<dyn Fn(PresentationEventType) -> VerboseResult<()>>>,
 }
 
 impl EventSystem {
@@ -49,16 +59,7 @@ impl EventSystem {
             selected_controller: RefCell::new(None),
             connected_controllers: RefCell::new(Vec::new()),
 
-            mouse_motion_event: RefCell::new(None),
-            mouse_down_event: RefCell::new(None),
-            mouse_up_event: RefCell::new(None),
-
-            key_down_event: RefCell::new(None),
-            key_up_event: RefCell::new(None),
-
-            button_down_event: RefCell::new(None),
-            button_up_event: RefCell::new(None),
-            axis_changed_event: RefCell::new(None),
+            event_callback: RefCell::new(Box::new(move |_| Ok(()))),
         };
 
         event_system.disable_mouse()?;
@@ -68,22 +69,21 @@ impl EventSystem {
         Ok(event_system)
     }
 
-    pub fn enable_mouse(
-        &self,
-        mouse_motion_event: Box<dyn Fn(u32, u32) -> VerboseResult<()>>,
-        mouse_down_event: Box<dyn Fn(MouseButton) -> VerboseResult<()>>,
-        mouse_up_event: Box<dyn Fn(MouseButton) -> VerboseResult<()>>,
-    ) -> VerboseResult<()> {
+    pub fn set_callback<F>(&self, f: F) -> VerboseResult<()>
+    where
+        F: Fn(PresentationEventType) -> VerboseResult<()> + 'static,
+    {
+        *self.event_callback.try_borrow_mut()? = Box::new(f);
+
+        Ok(())
+    }
+
+    pub fn enable_mouse(&self) -> VerboseResult<()> {
         let mut event_pump = self.event_pump.try_borrow_mut()?;
 
-        *self.mouse_motion_event.try_borrow_mut()? = Some(mouse_motion_event);
-        event_pump.enable_event(EventType::MouseMotion);
-
-        *self.mouse_down_event.try_borrow_mut()? = Some(mouse_down_event);
-        event_pump.enable_event(EventType::MouseButtonDown);
-
-        *self.mouse_up_event.try_borrow_mut()? = Some(mouse_up_event);
-        event_pump.enable_event(EventType::MouseButtonUp);
+        event_pump.enable_event(SdlEventType::MouseMotion);
+        event_pump.enable_event(SdlEventType::MouseButtonDown);
+        event_pump.enable_event(SdlEventType::MouseButtonUp);
 
         self.mouse.show_cursor(true);
 
@@ -93,32 +93,20 @@ impl EventSystem {
     pub fn disable_mouse(&self) -> VerboseResult<()> {
         let mut event_pump = self.event_pump.try_borrow_mut()?;
 
-        *self.mouse_motion_event.try_borrow_mut()? = None;
-        event_pump.disable_event(EventType::MouseMotion);
-
-        *self.mouse_down_event.try_borrow_mut()? = None;
-        event_pump.disable_event(EventType::MouseButtonDown);
-
-        *self.mouse_up_event.try_borrow_mut()? = None;
-        event_pump.disable_event(EventType::MouseButtonUp);
+        event_pump.disable_event(SdlEventType::MouseMotion);
+        event_pump.disable_event(SdlEventType::MouseButtonDown);
+        event_pump.disable_event(SdlEventType::MouseButtonUp);
 
         self.mouse.show_cursor(false);
 
         Ok(())
     }
 
-    pub fn enable_keyboard(
-        &self,
-        key_down_event: Box<dyn Fn(Keycode) -> VerboseResult<()>>,
-        key_up_event: Box<dyn Fn(Keycode) -> VerboseResult<()>>,
-    ) -> VerboseResult<()> {
+    pub fn enable_keyboard(&self) -> VerboseResult<()> {
         let mut event_pump = self.event_pump.try_borrow_mut()?;
 
-        *self.key_up_event.try_borrow_mut()? = Some(key_up_event);
-        event_pump.enable_event(EventType::KeyUp);
-
-        *self.key_down_event.try_borrow_mut()? = Some(key_down_event);
-        event_pump.enable_event(EventType::KeyDown);
+        event_pump.enable_event(SdlEventType::KeyUp);
+        event_pump.enable_event(SdlEventType::KeyDown);
 
         Ok(())
     }
@@ -126,31 +114,19 @@ impl EventSystem {
     pub fn disable_keyboard(&self) -> VerboseResult<()> {
         let mut event_pump = self.event_pump.try_borrow_mut()?;
 
-        *self.key_up_event.try_borrow_mut()? = None;
-        event_pump.disable_event(EventType::KeyUp);
+        event_pump.disable_event(SdlEventType::KeyUp);
 
-        *self.key_down_event.try_borrow_mut()? = None;
-        event_pump.disable_event(EventType::KeyDown);
+        event_pump.disable_event(SdlEventType::KeyDown);
 
         Ok(())
     }
 
-    pub fn enable_controller(
-        &self,
-        button_down_event: Box<dyn Fn(Button) -> VerboseResult<()>>,
-        button_up_event: Box<dyn Fn(Button) -> VerboseResult<()>>,
-        axis_changed_event: Box<dyn Fn(&Controller) -> VerboseResult<()>>,
-    ) -> VerboseResult<()> {
+    pub fn enable_controller(&self) -> VerboseResult<()> {
         let mut event_pump = self.event_pump.try_borrow_mut()?;
 
-        *self.axis_changed_event.try_borrow_mut()? = Some(axis_changed_event);
-        event_pump.enable_event(EventType::ControllerAxisMotion);
-
-        *self.button_down_event.try_borrow_mut()? = Some(button_down_event);
-        event_pump.enable_event(EventType::ControllerButtonDown);
-
-        *self.button_up_event.try_borrow_mut()? = Some(button_up_event);
-        event_pump.enable_event(EventType::ControllerButtonUp);
+        event_pump.enable_event(SdlEventType::ControllerAxisMotion);
+        event_pump.enable_event(SdlEventType::ControllerButtonDown);
+        event_pump.enable_event(SdlEventType::ControllerButtonUp);
 
         Ok(())
     }
@@ -158,14 +134,9 @@ impl EventSystem {
     pub fn disable_controller(&self) -> VerboseResult<()> {
         let mut event_pump = self.event_pump.try_borrow_mut()?;
 
-        *self.axis_changed_event.try_borrow_mut()? = None;
-        event_pump.disable_event(EventType::ControllerAxisMotion);
-
-        *self.button_down_event.try_borrow_mut()? = None;
-        event_pump.disable_event(EventType::ControllerButtonDown);
-
-        *self.button_up_event.try_borrow_mut()? = None;
-        event_pump.disable_event(EventType::ControllerButtonUp);
+        event_pump.disable_event(SdlEventType::ControllerAxisMotion);
+        event_pump.disable_event(SdlEventType::ControllerButtonDown);
+        event_pump.disable_event(SdlEventType::ControllerButtonUp);
 
         Ok(())
     }
@@ -183,32 +154,40 @@ impl EventSystem {
                 Event::Quit { .. } => return Ok(false),
                 // ----------------- Mouse Events ---------------------
                 Event::MouseMotion { x, y, .. } => {
-                    if let Some(mouse_motion_event) = self.mouse_motion_event.try_borrow()?.as_ref()
-                    {
-                        mouse_motion_event(x as u32, y as u32)?;
-                    }
+                    self.event_callback.try_borrow()?(PresentationEventType::MouseMotion(
+                        x as u32, y as u32,
+                    ))?;
                 }
                 Event::MouseButtonDown { mouse_btn, .. } => {
                     let mouse_button = match mouse_btn {
                         SdlMouseButton::Left => MouseButton::Left,
                         SdlMouseButton::Right => MouseButton::Right,
-                        _ => continue,
+                        SdlMouseButton::Middle => MouseButton::Middle,
+                        SdlMouseButton::X1 => MouseButton::Forward,
+                        SdlMouseButton::X2 => MouseButton::Backward,
+                        SdlMouseButton::Unknown => continue,
                     };
 
-                    if let Some(mouse_down_event) = self.mouse_down_event.try_borrow()?.as_ref() {
-                        mouse_down_event(mouse_button)?;
-                    }
+                    self.event_callback.try_borrow()?(PresentationEventType::MouseButtonDown(
+                        mouse_button,
+                    ))?;
                 }
                 Event::MouseButtonUp { mouse_btn, .. } => {
                     let mouse_button = match mouse_btn {
                         SdlMouseButton::Left => MouseButton::Left,
                         SdlMouseButton::Right => MouseButton::Right,
-                        _ => continue,
+                        SdlMouseButton::Middle => MouseButton::Middle,
+                        SdlMouseButton::X1 => MouseButton::Forward,
+                        SdlMouseButton::X2 => MouseButton::Backward,
+                        SdlMouseButton::Unknown => continue,
                     };
 
-                    if let Some(mouse_up_event) = self.mouse_up_event.try_borrow()?.as_ref() {
-                        mouse_up_event(mouse_button)?;
-                    }
+                    self.event_callback.try_borrow()?(PresentationEventType::MouseButtonUp(
+                        mouse_button,
+                    ))?;
+                }
+                Event::MouseWheel { .. } => {
+                    println!("Mouse Wheel event is currently not implemented!");
                 }
                 // ------------------- Key Events ---------------------
                 Event::KeyDown {
@@ -219,9 +198,7 @@ impl EventSystem {
                     }
 
                     if let Some(keycode) = keycode {
-                        if let Some(key_down_event) = self.key_down_event.try_borrow()?.as_ref() {
-                            key_down_event(keycode)?;
-                        }
+                        self.event_callback.try_borrow()?(PresentationEventType::KeyDown(keycode))?;
                     }
                 }
                 Event::KeyUp {
@@ -232,9 +209,7 @@ impl EventSystem {
                     }
 
                     if let Some(keycode) = keycode {
-                        if let Some(key_up_event) = self.key_up_event.try_borrow()?.as_ref() {
-                            key_up_event(keycode)?;
-                        }
+                        self.event_callback.try_borrow()?(PresentationEventType::KeyUp(keycode))?;
                     }
                 }
 
@@ -255,8 +230,12 @@ impl EventSystem {
                         connected_controllers.push(rc_controller.clone());
 
                         if selected_controller.is_none() {
-                            *selected_controller = Some(rc_controller);
+                            *selected_controller = Some(rc_controller.clone());
                         }
+
+                        self.event_callback.try_borrow()?(PresentationEventType::ControllerAdded(
+                            rc_controller,
+                        ))?;
                     }
                 }
                 Event::ControllerDeviceRemoved { which, .. } => {
@@ -264,7 +243,7 @@ impl EventSystem {
 
                     if selected_controller.is_some() {
                         // unwrap is save since we just tested for `is_some()`
-                        if selected_controller.as_ref().unwrap().try_borrow()?.id() == which as u32
+                        if selected_controller.as_ref().unwrap().try_borrow()?.id() as i32 == which
                         {
                             *selected_controller = None;
                         }
@@ -276,31 +255,61 @@ impl EventSystem {
 
                     for (i, controller_cell) in connected_controllers.iter().enumerate() {
                         let controller = controller_cell.try_borrow()?;
-                        if controller.id() == which as u32 {
+                        if controller.id() as i32 == which {
                             remove_index = i;
                             break;
                         }
                     }
 
-                    connected_controllers.swap_remove(remove_index);
+                    let removed_controller = connected_controllers.swap_remove(remove_index);
+
+                    // if we removed the selected controller, take the controller at the first position if possible
+                    if selected_controller.is_none() && !connected_controllers.is_empty() {
+                        *selected_controller = Some(connected_controllers[0].clone());
+                    }
+
+                    self.event_callback.try_borrow()?(PresentationEventType::ControllerRemoved(
+                        removed_controller,
+                    ))?;
                 }
                 // maybe make use of `which`, for support of multiple controllers
-                Event::ControllerButtonDown { button, .. } => {
-                    if let Some(button_down_event) = self.button_down_event.try_borrow()?.as_ref() {
-                        button_down_event(button)?;
+                Event::ControllerButtonDown { button, which, .. } => {
+                    // only call back if the selected controller pressed a button
+                    if let Some(selected_controller) =
+                        self.selected_controller.try_borrow()?.as_ref()
+                    {
+                        if selected_controller.try_borrow()?.id() as i32 == which {
+                            self.event_callback.try_borrow()?(
+                                PresentationEventType::ControllerButtonDown(button),
+                            )?;
+                        }
                     }
                 }
                 // maybe make use of `which`, for support of multiple controllers
-                Event::ControllerButtonUp { button, .. } => {
-                    if let Some(button_up_event) = self.button_up_event.try_borrow()?.as_ref() {
-                        button_up_event(button)?;
+                Event::ControllerButtonUp { button, which, .. } => {
+                    // only call back if the selected controller released a button
+                    if let Some(selected_controller) =
+                        self.selected_controller.try_borrow()?.as_ref()
+                    {
+                        if selected_controller.try_borrow()?.id() as i32 == which {
+                            self.event_callback.try_borrow()?(
+                                PresentationEventType::ControllerButtonUp(button),
+                            )?;
+                        }
                     }
                 }
-                Event::ControllerAxisMotion { axis, value, .. } => {
+                Event::ControllerAxisMotion {
+                    axis, value, which, ..
+                } => {
                     let mut selected_controller = self.selected_controller.try_borrow_mut()?;
 
                     if let Some(controller) = selected_controller.as_mut() {
                         let mut controller = controller.try_borrow_mut()?;
+
+                        // only update axis, when selected controller made the change
+                        if controller.id() as i32 != which {
+                            continue;
+                        }
 
                         // 1 / 32768 = 0,000030518
                         let normalized = value as f32 * 0.000_030_518;
@@ -334,12 +343,10 @@ impl EventSystem {
         }
 
         if controller_axis_changed {
-            if let Some(controller) = &self.selected_controller.try_borrow()?.as_ref() {
-                let controller = controller.try_borrow()?;
-
-                if let Some(axis_changed_event) = self.axis_changed_event.try_borrow()?.as_ref() {
-                    axis_changed_event(&controller)?;
-                }
+            if let Some(controller) = self.selected_controller.try_borrow()?.as_ref() {
+                self.event_callback.try_borrow()?(PresentationEventType::ControllerAxis(
+                    controller.clone(),
+                ))?;
             }
         }
 
