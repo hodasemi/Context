@@ -534,6 +534,9 @@ impl GuiHandler {
         self.ortho
             .set(ortho(0.0, width as f32, 0.0, height as f32, -1.0, 1.0));
 
+        self.width.set(width);
+        self.height.set(height);
+
         for frameable in self.frameables.try_borrow()?.iter() {
             frameable.resize()?;
         }
