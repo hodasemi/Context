@@ -269,7 +269,7 @@ impl GuiHandler {
 
             let desc_set = DescriptorPool::prepare_set(&desc_pool).allocate()?;
 
-            let vec_color = color.vec3();
+            let vec_color = color.as_vec3();
             let color_slice = [vec_color.x, vec_color.y, vec_color.z];
 
             let buffer = Buffer::new()

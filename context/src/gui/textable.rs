@@ -5,6 +5,8 @@ use crate::prelude::*;
 
 use super::texturedvertex::TexturedVertex;
 
+use cgmath::{vec3, Vector3};
+
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -29,19 +31,23 @@ pub enum TextColor {
     Green,
     Orange,
     Yellow,
+    Custom(u8, u8, u8),
 }
 
 impl TextColor {
     /// Returns a `Vector3<f32>` of the color
-    pub fn vec3(&self) -> cgmath::Vector3<f32> {
+    pub fn as_vec3(&self) -> Vector3<f32> {
         match *self {
-            TextColor::White => cgmath::Vector3::new(1.0, 1.0, 1.0),
-            TextColor::Black => cgmath::Vector3::new(0.0, 0.0, 0.0),
-            TextColor::Red => cgmath::Vector3::new(1.0, 0.0, 0.0),
-            TextColor::Blue => cgmath::Vector3::new(0.0, 0.0, 1.0),
-            TextColor::Green => cgmath::Vector3::new(0.0, 1.0, 0.0),
-            TextColor::Orange => cgmath::Vector3::new(1.0, 0.65, 0.0),
-            TextColor::Yellow => cgmath::Vector3::new(1.0, 1.0, 0.0),
+            TextColor::White => vec3(1.0, 1.0, 1.0),
+            TextColor::Black => vec3(0.0, 0.0, 0.0),
+            TextColor::Red => vec3(1.0, 0.0, 0.0),
+            TextColor::Blue => vec3(0.0, 0.0, 1.0),
+            TextColor::Green => vec3(0.0, 1.0, 0.0),
+            TextColor::Orange => vec3(1.0, 0.65, 0.0),
+            TextColor::Yellow => vec3(1.0, 1.0, 0.0),
+            TextColor::Custom(r, g, b) => {
+                vec3(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0)
+            }
         }
     }
 }
