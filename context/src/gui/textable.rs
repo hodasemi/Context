@@ -12,7 +12,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 /// `TextAlignment` is used to describe where the text of `Textable` is aligned to
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum TextAlignment {
     Left,
     Right,
@@ -22,7 +22,7 @@ pub enum TextAlignment {
 }
 
 /// `TextColor` describes the color of the text
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum TextColor {
     White,
     Black,

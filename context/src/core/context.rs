@@ -157,11 +157,11 @@ impl Context {
         &self.render_core
     }
 
-    pub fn set_fallback(
-        &self,
-        fallback: Box<dyn Fn(&str) -> VerboseResult<()>>,
-    ) -> VerboseResult<()> {
-        *self.fallback.try_borrow_mut()? = Some(fallback);
+    pub fn set_fallback<F>(&self, fallback: F) -> VerboseResult<()>
+    where
+        F: Fn(&str) -> VerboseResult<()> + 'static,
+    {
+        *self.fallback.try_borrow_mut()? = Some(Box::new(fallback));
 
         Ok(())
     }

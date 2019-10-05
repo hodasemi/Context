@@ -23,11 +23,16 @@ impl Executable {
     /// # Arguments
     ///
     /// * `callback` is a `Option<Callback>` closure
-    pub fn set_callback(
-        &self,
-        callback: Option<Box<dyn Fn() -> VerboseResult<()>>>,
-    ) -> VerboseResult<()> {
-        *self.callback.try_borrow_mut()? = callback;
+    pub fn set_callback<F>(&self, callback: Option<F>) -> VerboseResult<()>
+    where
+        F: Fn() -> VerboseResult<()> + 'static,
+    {
+        let mut function = self.callback.try_borrow_mut()?;
+
+        match callback {
+            Some(f) => *function = Some(Box::new(f)),
+            None => *function = None,
+        }
 
         Ok(())
     }
