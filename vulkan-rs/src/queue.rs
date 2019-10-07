@@ -1,9 +1,8 @@
 use utilities::prelude::*;
 
-use crate::impl_vk_handle;
 use crate::prelude::*;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub struct QueueRequestInfo {
     pub queue_create_info: VkDeviceQueueCreateInfo,
@@ -17,6 +16,8 @@ pub struct Queue {
     queue: VkQueue,
     family_index: u32,
     queue_index: u32,
+
+    submit_mutex: Mutex<()>,
 }
 
 impl Queue {
@@ -63,6 +64,8 @@ impl Queue {
             queue,
             family_index,
             queue_index,
+
+            submit_mutex: Mutex::new(()),
         })
     }
 
@@ -74,7 +77,10 @@ impl Queue {
         self.queue_index
     }
 
+    /// really expensiv call, since its locks the queue until it is idle
     pub fn submit(&self, fence: Option<&Arc<Fence>>, submits: &[SubmitInfo]) -> VerboseResult<()> {
+        let _submit_lock = self.submit_mutex.lock();
+
         let submit_infos: Vec<VkSubmitInfo> = submits.iter().map(|s| s.as_vk_submit()).collect();
 
         let fence = match fence {
@@ -83,7 +89,9 @@ impl Queue {
         };
 
         self.device
-            .queue_submit(self.queue, submit_infos.as_slice(), fence)
+            .queue_submit(self.queue, submit_infos.as_slice(), fence)?;
+
+        self.wait_idle()
     }
 
     pub fn present(
@@ -167,8 +175,6 @@ impl Queue {
 
 unsafe impl Sync for Queue {}
 unsafe impl Send for Queue {}
-
-impl_vk_handle!(Queue, VkQueue, queue);
 
 pub struct SubmitInfo {
     wait_semaphores: Vec<VkSemaphore>,
