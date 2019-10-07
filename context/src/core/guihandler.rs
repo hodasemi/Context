@@ -4,41 +4,12 @@ use presentation::prelude::*;
 
 use super::super::gui::texturedvertex::TexturedVertex;
 
-use cgmath::{ortho, vec3, Vector3};
+use cgmath::{ortho, Vector3};
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
-
-/// `TextColor` describes the color of the text
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum Color {
-    White,
-    Black,
-    Red,
-    Blue,
-    Green,
-    Orange,
-    Yellow,
-    Custom(u8, u8, u8),
-}
-
-impl Color {
-    /// Returns a `Vector3<f32>` of the color
-    pub fn as_vec3(&self) -> Vector3<f32> {
-        match *self {
-            Color::White => vec3(1.0, 1.0, 1.0),
-            Color::Black => vec3(0.0, 0.0, 0.0),
-            Color::Red => vec3(1.0, 0.0, 0.0),
-            Color::Blue => vec3(0.0, 0.0, 1.0),
-            Color::Green => vec3(0.0, 1.0, 0.0),
-            Color::Orange => vec3(1.0, 0.65, 0.0),
-            Color::Yellow => vec3(1.0, 1.0, 0.0),
-            Color::Custom(r, g, b) => vec3(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0),
-        }
-    }
-}
 
 #[derive(Clone, Default, Debug)]
 pub struct GuiHandlerCreateInfo {
@@ -304,15 +275,15 @@ impl GuiHandler {
 
             let desc_set = DescriptorPool::prepare_set(&desc_pool).allocate()?;
 
-            let vec_color = color.as_vec3();
-            let color_slice = [vec_color.x, vec_color.y, vec_color.z];
+            let color_vec: Vector3<f32> = color.into();
+            let color_array: [f32; 3] = color_vec.into();
 
             let buffer = Buffer::new()
                 .set_usage(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
                 .set_memory_properties(
                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                 )
-                .set_data(&color_slice)
+                .set_data(&color_array)
                 .build(self.device.clone())?;
 
             desc_set.update(&[DescriptorWrite::uniform_buffers(0, &[&buffer])]);
