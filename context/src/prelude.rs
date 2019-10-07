@@ -5,7 +5,7 @@ pub use crate::core::{
 };
 
 #[cfg(feature = "user_interface")]
-pub use crate::core::guihandler::{GuiHandler, GuiHandlerCreateInfo};
+pub use crate::core::guihandler::{Color, GuiHandler, GuiHandlerCreateInfo};
 
 #[cfg(feature = "audio")]
 pub use crate::core::soundhandler::{Music, Sound, SoundHandler, VolumeInfo};
@@ -18,13 +18,14 @@ pub use ears::{ReverbEffect, ReverbPreset};
 #[cfg(feature = "user_interface")]
 pub use crate::gui::{
     clickable::Clickable,
+    colorable::Colorable,
     displayable::Displayable,
     executable::Executable,
     frameable::*,
     hoverable::Hoverable,
     iconizable::Iconizable,
     selectable::Selectable,
-    textable::{TextAlignment, TextColor, Textable},
+    textable::{TextAlignment, Textable},
     topgui::TopGui,
     writeable::Writeable,
 };

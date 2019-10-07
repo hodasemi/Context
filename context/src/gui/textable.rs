@@ -5,8 +5,6 @@ use crate::prelude::*;
 
 use super::texturedvertex::TexturedVertex;
 
-use cgmath::{vec3, Vector3};
-
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -19,37 +17,6 @@ pub enum TextAlignment {
     Top,
     Bottom,
     Center,
-}
-
-/// `TextColor` describes the color of the text
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum TextColor {
-    White,
-    Black,
-    Red,
-    Blue,
-    Green,
-    Orange,
-    Yellow,
-    Custom(u8, u8, u8),
-}
-
-impl TextColor {
-    /// Returns a `Vector3<f32>` of the color
-    pub fn as_vec3(&self) -> Vector3<f32> {
-        match *self {
-            TextColor::White => vec3(1.0, 1.0, 1.0),
-            TextColor::Black => vec3(0.0, 0.0, 0.0),
-            TextColor::Red => vec3(1.0, 0.0, 0.0),
-            TextColor::Blue => vec3(0.0, 0.0, 1.0),
-            TextColor::Green => vec3(0.0, 1.0, 0.0),
-            TextColor::Orange => vec3(1.0, 0.65, 0.0),
-            TextColor::Yellow => vec3(1.0, 1.0, 0.0),
-            TextColor::Custom(r, g, b) => {
-                vec3(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0)
-            }
-        }
-    }
 }
 
 /// `Textable` gives the ability to display text inside an item
@@ -84,7 +51,7 @@ impl Textable {
         text: &str,
         height_ratio: f32,
         text_alignment: TextAlignment,
-        text_color: TextColor,
+        text_color: Color,
     ) -> VerboseResult<Arc<Textable>> {
         let set = gui_handler.color_descriptor(text_color)?;
 
@@ -163,7 +130,7 @@ impl Textable {
     /// # Arguments
     ///
     /// * `text_color` defines the color of the text
-    pub fn set_text_color(&self, text_color: TextColor) -> VerboseResult<()> {
+    pub fn set_text_color(&self, text_color: Color) -> VerboseResult<()> {
         let set = self.gui_handler.color_descriptor(text_color)?;
 
         *self.descriptor_set.try_borrow_mut()? = set;

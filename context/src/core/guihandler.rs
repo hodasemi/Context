@@ -4,12 +4,41 @@ use presentation::prelude::*;
 
 use super::super::gui::texturedvertex::TexturedVertex;
 
-use cgmath::ortho;
+use cgmath::{ortho, vec3, Vector3};
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
+
+/// `TextColor` describes the color of the text
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum Color {
+    White,
+    Black,
+    Red,
+    Blue,
+    Green,
+    Orange,
+    Yellow,
+    Custom(u8, u8, u8),
+}
+
+impl Color {
+    /// Returns a `Vector3<f32>` of the color
+    pub fn as_vec3(&self) -> Vector3<f32> {
+        match *self {
+            Color::White => vec3(1.0, 1.0, 1.0),
+            Color::Black => vec3(0.0, 0.0, 0.0),
+            Color::Red => vec3(1.0, 0.0, 0.0),
+            Color::Blue => vec3(0.0, 0.0, 1.0),
+            Color::Green => vec3(0.0, 1.0, 0.0),
+            Color::Orange => vec3(1.0, 0.65, 0.0),
+            Color::Yellow => vec3(1.0, 1.0, 0.0),
+            Color::Custom(r, g, b) => vec3(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0),
+        }
+    }
+}
 
 #[derive(Clone, Default, Debug)]
 pub struct GuiHandlerCreateInfo {
@@ -61,6 +90,7 @@ pub struct GuiHandler {
 
     text_objects: GuiSeparator,
     rectangle_objects: GuiSeparator,
+    single_color_objects: GuiSeparator,
 
     _bitmap_font: Arc<Image>,
     _bitmap_desc_pool: Arc<DescriptorPool>,
@@ -69,7 +99,7 @@ pub struct GuiHandler {
     text_color_layout: Arc<DescriptorSetLayout>,
 
     internal_textures: RefCell<HashMap<String, DisplayableTexture>>,
-    internal_colors: RefCell<HashMap<TextColor, TextableColor>>,
+    internal_colors: RefCell<HashMap<Color, TextableColor>>,
 
     ortho: Cell<cgmath::Matrix4<f32>>,
 
@@ -90,6 +120,7 @@ pub struct GuiHandler {
     textables: RefCell<Vec<Arc<Textable>>>,
     writeables: RefCell<Vec<Arc<Writeable>>>,
     iconizables: RefCell<Vec<Arc<Iconizable>>>,
+    colorables: RefCell<Vec<Arc<Colorable>>>,
 
     mouse_x: Cell<u32>,
     mouse_y: Cell<u32>,
@@ -123,10 +154,12 @@ impl GuiHandler {
         };
 
         let (text_objs, color_layout) =
-            GuiHandler::init_text_objects(device, render_core.gui_render_pass())?;
-        let rect_objs = GuiHandler::init_rectangle_objects(device, render_core.gui_render_pass())?;
+            Self::init_text_objects(device, render_core.gui_render_pass())?;
+        let rect_objs = Self::init_rectangle_objects(device, render_core.gui_render_pass())?;
+        let single_color_objects =
+            Self::init_single_color_objects(device, render_core.gui_render_pass())?;
 
-        let (bitmap_texture, bitmap_desc_pool, bitmap_desc_set) = GuiHandler::init_bitmap_font(
+        let (bitmap_texture, bitmap_desc_pool, bitmap_desc_set) = Self::init_bitmap_font(
             device,
             queue,
             text_objs._descriptor_layout.clone(),
@@ -155,6 +188,7 @@ impl GuiHandler {
 
             text_objects: text_objs,
             rectangle_objects: rect_objs,
+            single_color_objects,
 
             _bitmap_font: bitmap_texture,
             _bitmap_desc_pool: bitmap_desc_pool,
@@ -181,6 +215,7 @@ impl GuiHandler {
             textables: RefCell::new(Vec::new()),
             writeables: RefCell::new(Vec::new()),
             iconizables: RefCell::new(Vec::new()),
+            colorables: RefCell::new(Vec::new()),
 
             ortho: Cell::new(ortho(
                 0.0,
@@ -257,7 +292,7 @@ impl GuiHandler {
         }
     }
 
-    pub(crate) fn color_descriptor(&self, color: TextColor) -> VerboseResult<Arc<DescriptorSet>> {
+    pub(crate) fn color_descriptor(&self, color: Color) -> VerboseResult<Arc<DescriptorSet>> {
         if self.internal_colors.try_borrow()?.contains_key(&color) {
             Ok(self.internal_colors.try_borrow()?[&color]
                 ._descriptor_set
@@ -617,6 +652,7 @@ impl GuiHandler {
                     | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
             );
             command_buffer_begin_info.set_inheritance_info(&inheritance_info);
+
             gui_command_buffer.begin(command_buffer_begin_info)?;
 
             let viewport = [VkViewport {
@@ -636,51 +672,87 @@ impl GuiHandler {
                 },
             }];
 
-            gui_command_buffer.bind_pipeline(&self.rectangle_objects._pipeline)?;
+            {
+                let colorables = self.colorables.try_borrow()?;
 
-            gui_command_buffer.set_scissor(&scissor);
-            gui_command_buffer.set_viewport(&viewport);
+                if !colorables.is_empty() {
+                    gui_command_buffer.bind_pipeline(&self.single_color_objects._pipeline)?;
 
-            // ---------- render displayables ----------
-            for displayable in self.displayables.try_borrow()?.iter() {
-                gui_command_buffer.bind_vertex_buffer(displayable.buffer());
+                    gui_command_buffer.set_scissor(&scissor);
+                    gui_command_buffer.set_viewport(&viewport);
 
-                gui_command_buffer
-                    .bind_descriptor_sets_minimal(&[&displayable.descriptor_set()?])?;
+                    // ---------- render colorables ----------
+                    for colorable in colorables.iter() {
+                        gui_command_buffer.bind_vertex_buffer(colorable.buffer());
 
-                gui_command_buffer.draw_complete_single_instance(6);
+                        gui_command_buffer
+                            .bind_descriptor_sets_minimal(&[&colorable.descriptor_set()?])?;
+
+                        gui_command_buffer.draw_complete_single_instance(6);
+                    }
+                }
             }
 
-            // ---------- render iconizables ----------
-            for iconizable in self.iconizables.try_borrow()?.iter() {
-                gui_command_buffer.bind_vertex_buffer(iconizable.buffer());
+            {
+                let displayables = self.displayables.try_borrow()?;
+                let iconizables = self.iconizables.try_borrow()?;
 
-                gui_command_buffer.bind_descriptor_sets_minimal(&[&iconizable.descriptor_set()])?;
+                if !displayables.is_empty() || !iconizables.is_empty() {
+                    gui_command_buffer.bind_pipeline(&self.rectangle_objects._pipeline)?;
 
-                gui_command_buffer.draw_complete_single_instance(6);
+                    gui_command_buffer.set_scissor(&scissor);
+                    gui_command_buffer.set_viewport(&viewport);
+
+                    // ---------- render displayables ----------
+                    for displayable in displayables.iter() {
+                        gui_command_buffer.bind_vertex_buffer(displayable.buffer());
+
+                        gui_command_buffer
+                            .bind_descriptor_sets_minimal(&[&displayable.descriptor_set()?])?;
+
+                        gui_command_buffer.draw_complete_single_instance(6);
+                    }
+
+                    // ---------- render iconizables ----------
+                    for iconizable in iconizables.iter() {
+                        gui_command_buffer.bind_vertex_buffer(iconizable.buffer());
+
+                        gui_command_buffer
+                            .bind_descriptor_sets_minimal(&[&iconizable.descriptor_set()])?;
+
+                        gui_command_buffer.draw_complete_single_instance(6);
+                    }
+                }
             }
 
-            gui_command_buffer.bind_pipeline(&self.text_objects._pipeline)?;
+            {
+                let textables = self.textables.try_borrow()?;
 
-            gui_command_buffer.set_scissor(&scissor);
-            gui_command_buffer.set_viewport(&viewport);
+                if !textables.is_empty() {
+                    gui_command_buffer.bind_pipeline(&self.text_objects._pipeline)?;
 
-            let mut text_buffers = command_buffer_state.text_buffers.try_borrow_mut()?;
-            text_buffers.clear();
+                    gui_command_buffer.set_scissor(&scissor);
+                    gui_command_buffer.set_viewport(&viewport);
 
-            // ---------- render textables ----------
-            for textable in self.textables.try_borrow()?.iter() {
-                if let Some(text_buffer) = textable.buffer()? {
-                    gui_command_buffer.bind_vertex_buffer(&text_buffer);
+                    let mut text_buffers = command_buffer_state.text_buffers.try_borrow_mut()?;
+                    text_buffers.clear();
 
-                    text_buffers.push(text_buffer);
+                    // ---------- render textables ----------
+                    for textable in textables.iter() {
+                        if let Some(text_buffer) = textable.buffer()? {
+                            gui_command_buffer.bind_vertex_buffer(&text_buffer);
 
-                    gui_command_buffer.bind_descriptor_sets_minimal(&[
-                        &self.bitmap_desc_set,
-                        &textable.descriptor_set()?,
-                    ])?;
+                            text_buffers.push(text_buffer);
 
-                    gui_command_buffer.draw_complete_single_instance(textable.vertex_count());
+                            gui_command_buffer.bind_descriptor_sets_minimal(&[
+                                &self.bitmap_desc_set,
+                                &textable.descriptor_set()?,
+                            ])?;
+
+                            gui_command_buffer
+                                .draw_complete_single_instance(textable.vertex_count());
+                        }
+                    }
                 }
             }
 
@@ -697,20 +769,18 @@ impl GuiHandler {
 impl GuiHandler {
     // frameable
     pub(crate) fn add_frameable(&self, frameable: &Arc<Frameable>) -> VerboseResult<()> {
-        self.frameables.try_borrow_mut()?.push(frameable.clone());
-        Ok(())
+        Self::push_element(&self.frameables, frameable)
     }
 
     pub(crate) fn delete_frameable(&self, frameable: &Arc<Frameable>) -> VerboseResult<()> {
-        let mut frameables = self.frameables.try_borrow_mut()?;
-        erase_arc(&mut frameables, frameable);
+        Self::erase_element(&self.frameables, frameable)?;
+
         Ok(())
     }
 
     // hoverable
     pub(crate) fn add_hoverable(&self, hoverable: &Arc<Hoverable>) -> VerboseResult<()> {
-        self.hoverables.try_borrow_mut()?.push(hoverable.clone());
-        Ok(())
+        Self::push_element(&self.hoverables, hoverable)
     }
 
     pub(crate) fn delete_hoverable(&self, hoverable: &Arc<Hoverable>) -> VerboseResult<()> {
@@ -722,15 +792,14 @@ impl GuiHandler {
             }
         }
 
-        let mut hoverables = self.hoverables.try_borrow_mut()?;
-        erase_arc(&mut hoverables, hoverable);
+        Self::erase_element(&self.hoverables, hoverable)?;
+
         Ok(())
     }
 
     // selectable
     pub(crate) fn add_selectable(&self, selectable: &Arc<Selectable>) -> VerboseResult<()> {
-        self.selectables.try_borrow_mut()?.push(selectable.clone());
-        Ok(())
+        Self::push_element(&self.selectables, selectable)
     }
 
     pub(crate) fn delete_selectable(&self, selectable: &Arc<Selectable>) -> VerboseResult<()> {
@@ -742,31 +811,29 @@ impl GuiHandler {
             }
         }
 
-        let mut selectables = self.selectables.try_borrow_mut()?;
-        erase_arc(&mut selectables, selectable);
+        Self::erase_element(&self.selectables, selectable)?;
+
         Ok(())
     }
 
     // displayable
     pub(crate) fn add_displayable(&self, displayable: &Arc<Displayable>) -> VerboseResult<()> {
-        self.displayables
-            .try_borrow_mut()?
-            .push(displayable.clone());
+        Self::push_element(&self.displayables, displayable)?;
         self.needs_update.set(true);
         Ok(())
     }
 
     pub(crate) fn delete_displayable(&self, displayable: &Arc<Displayable>) -> VerboseResult<()> {
-        let mut displayables = self.displayables.try_borrow_mut()?;
-        erase_arc(&mut displayables, displayable);
-        self.needs_update.set(true);
+        if Self::erase_element(&self.displayables, displayable)? {
+            self.needs_update.set(true);
+        }
+
         Ok(())
     }
 
     // clickable
     pub(crate) fn add_clickable(&self, clickable: &Arc<Clickable>) -> VerboseResult<()> {
-        self.clickables.try_borrow_mut()?.push(clickable.clone());
-        Ok(())
+        Self::push_element(&self.clickables, clickable)
     }
 
     pub(crate) fn delete_clickable(&self, clickable: &Arc<Clickable>) -> VerboseResult<()> {
@@ -778,29 +845,29 @@ impl GuiHandler {
             }
         }
 
-        let mut clickables = self.clickables.try_borrow_mut()?;
-        erase_arc(&mut clickables, clickable);
+        Self::erase_element(&self.clickables, clickable)?;
+
         Ok(())
     }
 
     // textable
     pub(crate) fn add_textable(&self, textable: &Arc<Textable>) -> VerboseResult<()> {
-        self.textables.try_borrow_mut()?.push(textable.clone());
+        Self::push_element(&self.textables, textable)?;
         self.needs_update.set(true);
         Ok(())
     }
 
     pub(crate) fn delete_textable(&self, textable: &Arc<Textable>) -> VerboseResult<()> {
-        let mut textables = self.textables.try_borrow_mut()?;
-        erase_arc(&mut textables, textable);
-        self.needs_update.set(true);
+        if Self::erase_element(&self.textables, textable)? {
+            self.needs_update.set(true);
+        }
+
         Ok(())
     }
 
     // writable
     pub(crate) fn add_writeable(&self, writeable: &Arc<Writeable>) -> VerboseResult<()> {
-        self.writeables.try_borrow_mut()?.push(writeable.clone());
-        Ok(())
+        Self::push_element(&self.writeables, writeable)
     }
 
     pub(crate) fn delete_writeable(&self, writeable: &Arc<Writeable>) -> VerboseResult<()> {
@@ -810,23 +877,23 @@ impl GuiHandler {
             }
         }
 
-        let mut writeables = self.writeables.try_borrow_mut()?;
-        erase_arc(&mut writeables, writeable);
+        Self::erase_element(&self.writeables, writeable)?;
 
         Ok(())
     }
 
     // iconizable
     pub(crate) fn add_iconizable(&self, iconizable: &Arc<Iconizable>) -> VerboseResult<()> {
-        self.iconizables.try_borrow_mut()?.push(iconizable.clone());
+        Self::push_element(&self.iconizables, iconizable)?;
         self.needs_update.set(true);
         Ok(())
     }
 
     pub(crate) fn delete_iconizable(&self, iconizable: &Arc<Iconizable>) -> VerboseResult<()> {
-        let mut iconizables = self.iconizables.try_borrow_mut()?;
-        erase_arc(&mut iconizables, iconizable);
-        self.needs_update.set(true);
+        if Self::erase_element(&self.iconizables, iconizable)? {
+            self.needs_update.set(true);
+        }
+
         Ok(())
     }
 
@@ -844,6 +911,41 @@ impl GuiHandler {
         *current_selectable = selectable;
 
         Ok(())
+    }
+
+    pub(crate) fn add_colorable(&self, colorable: &Arc<Colorable>) -> VerboseResult<()> {
+        Self::push_element(&self.colorables, colorable)?;
+        self.needs_update.set(true);
+        Ok(())
+    }
+
+    pub(crate) fn delete_colorable(&self, colorable: &Arc<Colorable>) -> VerboseResult<()> {
+        if Self::erase_element(&self.colorables, colorable)? {
+            self.needs_update.set(true);
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    fn push_element<T>(vector: &RefCell<Vec<Arc<T>>>, element: &Arc<T>) -> VerboseResult<()> {
+        let mut v = vector.try_borrow_mut()?;
+
+        if cfg!(debug_assertions) {
+            if v.iter().find(|e| Arc::ptr_eq(e, element)).is_some() {
+                create_error!("element is pushed twice, actually an error");
+            }
+        }
+
+        v.push(element.clone());
+
+        Ok(())
+    }
+
+    #[inline]
+    fn erase_element<T>(vector: &RefCell<Vec<Arc<T>>>, element: &Arc<T>) -> VerboseResult<bool> {
+        let mut v = vector.try_borrow_mut()?;
+        Ok(erase_arc(&mut v, element))
     }
 }
 
@@ -910,11 +1012,8 @@ impl GuiHandler {
             )
             .build(device.clone())?;
 
-        let pipeline_layout = PipelineLayout::new(
-            device.clone(),
-            &[descriptor_layout.as_ref(), color_layout.as_ref()],
-            &[],
-        )?;
+        let pipeline_layout =
+            PipelineLayout::new(device.clone(), &[&descriptor_layout, &color_layout], &[])?;
 
         // --- pipeline creation ---
         let vertex_shader_text = include_bytes!("guishader/text.vert.spv");
@@ -925,8 +1024,12 @@ impl GuiHandler {
             ShaderModule::from_slice(device.clone(), fragment_shader_text, ShaderType::Fragment)?,
         ];
 
+        let (input_state, _input_bindings, _input_attributes) =
+            TexturedVertex::vertex_input_state();
+
         let pipeline = GuiHandler::init_gui_pipeline(
             device,
+            input_state,
             render_pass,
             pipeline_layout.clone(),
             shader_modules,
@@ -956,9 +1059,7 @@ impl GuiHandler {
             )
             .build(device.clone())?;
 
-        let tmp: &DescriptorSetLayout = &descriptor_layout;
-
-        let pipeline_layout = PipelineLayout::new(device.clone(), &[tmp], &[])?;
+        let pipeline_layout = PipelineLayout::new(device.clone(), &[&descriptor_layout], &[])?;
 
         // pipeline creation
         let vertex_shader_text = include_bytes!("guishader/rect.vert.spv");
@@ -969,8 +1070,12 @@ impl GuiHandler {
             ShaderModule::from_slice(device.clone(), fragment_shader_text, ShaderType::Fragment)?,
         ];
 
+        let (input_state, _input_bindings, _input_attributes) =
+            TexturedVertex::vertex_input_state();
+
         let pipeline = GuiHandler::init_gui_pipeline(
             device,
+            input_state,
             render_pass,
             pipeline_layout.clone(),
             shader_modules,
@@ -984,17 +1089,57 @@ impl GuiHandler {
         })
     }
 
+    fn init_single_color_objects(
+        device: &Arc<Device>,
+        render_pass: &Arc<RenderPass>,
+    ) -> VerboseResult<GuiSeparator> {
+        let color_layout = DescriptorSetLayout::new()
+            .add_layout_binding(
+                0,
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+            )
+            .build(device.clone())?;
+
+        let pipeline_layout = PipelineLayout::new(device.clone(), &[&color_layout], &[])?;
+
+        // pipeline creation
+        let vertex_shader_text = include_bytes!("guishader/single_color.vert.spv");
+        let fragment_shader_text = include_bytes!("guishader/single_color.frag.spv");
+
+        let shader_modules = vec![
+            ShaderModule::from_slice(device.clone(), vertex_shader_text, ShaderType::Vertex)?,
+            ShaderModule::from_slice(device.clone(), fragment_shader_text, ShaderType::Fragment)?,
+        ];
+
+        let (input_state, _input_bindings, _input_attributes) = Colorable::vertex_input_state();
+
+        let pipeline = GuiHandler::init_gui_pipeline(
+            device,
+            input_state,
+            render_pass,
+            pipeline_layout.clone(),
+            shader_modules,
+        )?;
+
+        Ok(GuiSeparator {
+            _descriptor_layout: color_layout,
+            _pipeline_layout: pipeline_layout,
+
+            _pipeline: pipeline,
+        })
+    }
+
     fn init_gui_pipeline(
         device: &Arc<Device>,
+        input_state: VkPipelineVertexInputStateCreateInfo,
         render_pass: &Arc<RenderPass>,
         pipeline_layout: Arc<PipelineLayout>,
         shaders: Vec<Arc<ShaderModule>>,
     ) -> VerboseResult<Arc<Pipeline>> {
         let stages: Vec<VkPipelineShaderStageCreateInfo> =
             shaders.iter().map(|s| s.pipeline_stage_info()).collect();
-
-        let (input_state, _input_bindings, _input_attributes) =
-            TexturedVertex::vertex_input_state();
 
         let assembly_state = VkPipelineInputAssemblyStateCreateInfo::new(
             VK_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_NULL_BIT,
