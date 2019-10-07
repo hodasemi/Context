@@ -1,5 +1,6 @@
 use utilities::prelude::*;
 
+use crate::impl_vk_handle;
 use crate::prelude::*;
 
 use std::sync::{Arc, Mutex};
@@ -16,8 +17,6 @@ pub struct Queue {
     queue: VkQueue,
     family_index: u32,
     queue_index: u32,
-
-    submit_mutex: Mutex<()>,
 }
 
 impl Queue {
@@ -58,15 +57,13 @@ impl Queue {
         queue: VkQueue,
         family_index: u32,
         queue_index: u32,
-    ) -> Arc<Queue> {
-        Arc::new(Queue {
+    ) -> Arc<Mutex<Queue>> {
+        Arc::new(Mutex::new(Queue {
             device,
             queue,
             family_index,
             queue_index,
-
-            submit_mutex: Mutex::new(()),
-        })
+        }))
     }
 
     pub fn family_index(&self) -> u32 {
@@ -79,8 +76,6 @@ impl Queue {
 
     /// really expensiv call, since its locks the queue until it is idle
     pub fn submit(&self, fence: Option<&Arc<Fence>>, submits: &[SubmitInfo]) -> VerboseResult<()> {
-        let _submit_lock = self.submit_mutex.lock();
-
         let submit_infos: Vec<VkSubmitInfo> = submits.iter().map(|s| s.as_vk_submit()).collect();
 
         let fence = match fence {
@@ -89,9 +84,7 @@ impl Queue {
         };
 
         self.device
-            .queue_submit(self.queue, submit_infos.as_slice(), fence)?;
-
-        self.wait_idle()
+            .queue_submit(self.queue, submit_infos.as_slice(), fence)
     }
 
     pub fn present(
@@ -122,6 +115,8 @@ impl Queue {
         self.device.queue_wait_idle(self.queue)
     }
 }
+
+impl_vk_handle!(Queue, VkQueue, queue);
 
 impl Queue {
     fn find_presentable_queue_index(

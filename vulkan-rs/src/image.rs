@@ -5,7 +5,7 @@ use crate::prelude::*;
 
 use std::cell::Cell;
 use std::cmp;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 enum ImageSourceType {
     Empty,
@@ -90,7 +90,11 @@ impl ImageBuilder {
         }
     }
 
-    pub fn build(self, device: &Arc<Device>, queue: &Arc<Queue>) -> VerboseResult<Arc<Image>> {
+    pub fn build(
+        self,
+        device: &Arc<Device>,
+        queue: &Arc<Mutex<Queue>>,
+    ) -> VerboseResult<Arc<Image>> {
         let mut image_view_ci = self.vk_image_view_create_info();
 
         match self.builder_type {
@@ -530,7 +534,7 @@ impl ImageBuilder {
 
     fn create_from_source(
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
         info: &ImageCreateInfo,
         sampler_info: &Option<VkSamplerCreateInfo>,
         mut view_ci: VkImageViewCreateInfo,
@@ -588,7 +592,7 @@ impl ImageBuilder {
 
     fn optimize_fill(
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
         data: &[u8],
         image: &Arc<Image>,
     ) -> VerboseResult<()> {
@@ -616,7 +620,7 @@ pub struct Image {
     device: Arc<Device>,
 
     // queue handle
-    queue: Arc<Queue>,
+    queue: Arc<Mutex<Queue>>,
 
     // image handle
     attached: bool,
@@ -778,7 +782,7 @@ impl Image {
         &self.device
     }
 
-    pub fn queue(&self) -> &Arc<Queue> {
+    pub fn queue(&self) -> &Arc<Mutex<Queue>> {
         &self.queue
     }
 
@@ -848,9 +852,11 @@ impl Drop for Image {
 }
 
 fn into_layout(image: &Image, layout: VkImageLayout) -> VerboseResult<()> {
+    let queue_lock = image.queue.lock()?;
+
     // create a new command pool
     let command_pool = CommandPool::new()
-        .set_queue_family_index(image.queue.family_index())
+        .set_queue_family_index(queue_lock.family_index())
         .build(image.device.clone())?;
 
     // create a new command buffer
@@ -880,7 +886,7 @@ fn into_layout(image: &Image, layout: VkImageLayout) -> VerboseResult<()> {
     let submit = SubmitInfo::new().add_command_buffer(&command_buffer);
     let fence = Fence::new().build(image.device.clone())?;
 
-    image.queue.submit(Some(&fence), &[submit])?;
+    queue_lock.submit(Some(&fence), &[submit])?;
 
     image
         .device
@@ -891,16 +897,18 @@ fn into_layout(image: &Image, layout: VkImageLayout) -> VerboseResult<()> {
 
 fn copy_buffer_to_image<T>(
     device: &Arc<Device>,
-    queue: &Arc<Queue>,
+    queue: &Arc<Mutex<Queue>>,
     buffer: &Arc<Buffer<T>>,
     image: &Arc<Image>,
 ) -> VerboseResult<()>
 where
     T: Copy,
 {
+    let queue_lock = queue.lock()?;
+
     // create a new command pool
     let command_pool = CommandPool::new()
-        .set_queue_family_index(queue.family_index())
+        .set_queue_family_index(queue_lock.family_index())
         .build(device.clone())?;
 
     // create a new command buffer
@@ -980,7 +988,7 @@ where
     let submit = SubmitInfo::new().add_command_buffer(&command_buffer);
     let fence = Fence::new().build(device.clone())?;
 
-    queue.submit(Some(&fence), &[submit])?;
+    queue_lock.submit(Some(&fence), &[submit])?;
 
     device.wait_for_fences(&[&fence], true, 1_000_000_000)?;
 
@@ -989,13 +997,15 @@ where
 
 fn copy_images_to_imagearray(
     device: &Arc<Device>,
-    queue: &Arc<Queue>,
+    queue: &Arc<Mutex<Queue>>,
     image_array: &Arc<Image>,
     images: &[Arc<Image>],
 ) -> VerboseResult<()> {
+    let queue_lock = queue.lock()?;
+
     // create a new command pool
     let command_pool = CommandPool::new()
-        .set_queue_family_index(queue.family_index())
+        .set_queue_family_index(queue_lock.family_index())
         .build(device.clone())?;
 
     // create a new command buffer
@@ -1057,7 +1067,7 @@ fn copy_images_to_imagearray(
     let submit = SubmitInfo::new().add_command_buffer(&command_buffer);
     let fence = Fence::new().build(device.clone())?;
 
-    queue.submit(Some(&fence), &[submit])?;
+    queue_lock.submit(Some(&fence), &[submit])?;
 
     device.wait_for_fences(&[&fence], true, 1_000_000_000)?;
 

@@ -7,7 +7,7 @@ use vulkan_rs::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 use std::slice;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub enum TargetMode<T> {
@@ -59,7 +59,7 @@ pub struct VRTransformations {
 
 pub struct RenderBackend {
     device: Arc<Device>,
-    queue: Arc<Queue>,
+    queue: Arc<Mutex<Queue>>,
 
     gui_render_pass: Arc<RenderPass>,
 
@@ -91,7 +91,7 @@ pub struct RenderBackend {
 impl RenderBackend {
     pub fn new(
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
         images: TargetMode<Vec<Arc<Image>>>,
         format: VkFormat,
     ) -> VerboseResult<RenderBackend> {
@@ -108,9 +108,13 @@ impl RenderBackend {
         };
 
         // command pool
-        let command_pool = CommandPool::new()
-            .set_queue_family_index(queue.family_index())
-            .build(device.clone())?;
+        let command_pool = {
+            let queue_lock = queue.lock()?;
+
+            CommandPool::new()
+                .set_queue_family_index(queue_lock.family_index())
+                .build(device.clone())?
+        };
 
         // create a new command buffer
         let command_buffer = CommandPool::allocate_primary_buffer(&command_pool)?;
@@ -141,7 +145,7 @@ impl RenderBackend {
         &self.device
     }
 
-    pub fn queue(&self) -> &Arc<Queue> {
+    pub fn queue(&self) -> &Arc<Mutex<Queue>> {
         &self.queue
     }
 

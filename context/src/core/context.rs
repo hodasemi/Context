@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::env::set_var;
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub enum Event {
     MouseMotion(u32, u32),
@@ -174,7 +174,7 @@ impl Context {
         &self.core.device()
     }
 
-    pub fn queue(&self) -> &Arc<Queue> {
+    pub fn queue(&self) -> &Arc<Mutex<Queue>> {
         self.core.queue()
     }
 
@@ -887,7 +887,7 @@ impl ContextBuilder {
         target_mode: TargetMode<()>,
         render_core: &Box<dyn RenderCore>,
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
     ) -> VerboseResult<Arc<GuiHandler>> {
         match &self.gui_info {
             Some(gui_info) => {

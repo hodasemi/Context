@@ -50,7 +50,7 @@ pub mod openvrrendercore {
     use utilities::prelude::*;
     use vulkan_rs::prelude::*;
 
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex};
 
     use super::openvrintegration::OpenVRIntegration;
 
@@ -64,7 +64,7 @@ pub mod openvrrendercore {
         pub fn new(
             _: &OpenVRIntegration,
             _: &Arc<Device>,
-            _: &Arc<Queue>,
+            _: &Arc<Mutex<Queue>>,
         ) -> VerboseResult<(Self, TargetMode<()>)> {
             create_error!("OpenVR feature not enabled!")
         }

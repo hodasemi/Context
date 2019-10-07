@@ -6,7 +6,7 @@ use utilities::prelude::*;
 use vulkan_rs::prelude::*;
 
 use std::cell::Cell;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::u64;
 
 pub struct VulkanWindowRenderCore {
@@ -27,7 +27,7 @@ impl VulkanWindowRenderCore {
     pub fn new(
         wsi: &WindowSystemIntegration,
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
         vsync: bool,
     ) -> VerboseResult<(VulkanWindowRenderCore, TargetMode<()>)> {
         // check swapchain extension
@@ -154,18 +154,20 @@ impl RenderCore for VulkanWindowRenderCore {
             .add_command_buffer(&command_buffer)
             .add_signal_semaphore(&self.render_finished_sem)];
 
-        self.render_backend
-            .queue()
-            .submit(Some(&self.render_fence), submits)?;
+        {
+            let queue_lock = self.render_backend.queue().lock()?;
 
-        if let OutOfDate::OutOfDate = self.render_backend.queue().present(
-            &[&self.swapchain],
-            &[self.current_image_index.get() as u32],
-            &[&self.render_finished_sem],
-        )? {
-            self.resize()?;
-            self.render_fence.reset();
-            return Ok(true);
+            queue_lock.submit(Some(&self.render_fence), submits)?;
+
+            if let OutOfDate::OutOfDate = queue_lock.present(
+                &[&self.swapchain],
+                &[self.current_image_index.get() as u32],
+                &[&self.render_finished_sem],
+            )? {
+                self.resize()?;
+                self.render_fence.reset();
+                return Ok(true);
+            }
         }
 
         // make sure command_buffer is ready

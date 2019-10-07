@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub enum ClearValue {
     Color([f32; 4]),
@@ -70,7 +70,11 @@ impl<'a> RenderTargetBuilder<'a> {
         self
     }
 
-    pub fn build(self, device: &Arc<Device>, queue: &Arc<Queue>) -> VerboseResult<RenderTarget> {
+    pub fn build(
+        self,
+        device: &Arc<Device>,
+        queue: &Arc<Mutex<Queue>>,
+    ) -> VerboseResult<RenderTarget> {
         let (render_pass, images, clear_values) =
             self.create_images_and_renderpass(device, queue)?;
 
@@ -253,7 +257,7 @@ impl<'a> RenderTargetBuilder<'a> {
     fn create_images_and_renderpass(
         &self,
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
     ) -> VerboseResult<(Arc<RenderPass>, Vec<Arc<Image>>, Vec<VkClearValue>)> {
         // check for correct sample count
         let checked_sample_count = device.max_supported_sample_count(self.sample_count);

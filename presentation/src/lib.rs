@@ -27,12 +27,12 @@ use vulkan_rs::prelude::*;
 
 use crate::prelude::*;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub fn create_render_core(
     presentation_core: &PresentationCore,
     device: &Arc<Device>,
-    queue: &Arc<Queue>,
+    queue: &Arc<Mutex<Queue>>,
     enable_vsync: bool,
 ) -> VerboseResult<(Box<dyn RenderCore>, TargetMode<()>)> {
     match presentation_core.backend() {

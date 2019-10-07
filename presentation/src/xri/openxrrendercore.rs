@@ -17,7 +17,7 @@ use vulkan_rs::prelude::*;
 
 use std::cell::RefCell;
 use std::mem;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub struct OpenXRRenderCore {
     instance: Arc<OpenXRInstance>,
@@ -43,10 +43,13 @@ impl OpenXRRenderCore {
     pub fn new(
         xri: &OpenXRIntegration,
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
     ) -> VerboseResult<(OpenXRRenderCore, TargetMode<()>)> {
-        let (session, frame_waiter, frame_stream) =
-            xri.create_session(device, queue.family_index(), queue.queue_index())?;
+        let (session, frame_waiter, frame_stream) = {
+            let queue_lock = queue.lock()?;
+
+            xri.create_session(device, queue_lock.family_index(), queue_lock.queue_index())?
+        };
 
         let view_config_type = Self::find_view_config_type(xri)?;
 
@@ -373,9 +376,11 @@ impl RenderCore for OpenXRRenderCore {
                 .add_command_buffer(command_buffer)
                 .add_wait_stage(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)];
 
-            self.render_backend
-                .queue()
-                .submit(Some(&self.render_fence), submits)?;
+            {
+                let queue_lock = self.render_backend.queue().lock()?;
+
+                queue_lock.submit(Some(&self.render_fence), submits)?;
+            }
 
             // make sure command_buffer is ready
             self.render_backend.device().wait_for_fences(

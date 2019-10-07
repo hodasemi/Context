@@ -9,7 +9,7 @@ use cgmath::{ortho, Vector3};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Default, Debug)]
 pub struct GuiHandlerCreateInfo {
@@ -50,7 +50,7 @@ struct CommandBufferState {
 
 pub struct GuiHandler {
     device: Arc<Device>,
-    queue: Arc<Queue>,
+    queue: Arc<Mutex<Queue>>,
 
     width: Cell<u32>,
     height: Cell<u32>,
@@ -107,7 +107,7 @@ impl GuiHandler {
         gui_handler_create_info: GuiHandlerCreateInfo,
         target_mode: TargetMode<()>,
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
         render_core: &Box<dyn RenderCore>,
     ) -> VerboseResult<GuiHandler> {
         let command_buffers = match target_mode {
@@ -211,7 +211,7 @@ impl GuiHandler {
         &self.device
     }
 
-    pub fn queue(&self) -> &Arc<Queue> {
+    pub fn queue(&self) -> &Arc<Mutex<Queue>> {
         &self.queue
     }
 
@@ -940,7 +940,7 @@ impl GuiHandler {
 
     fn init_bitmap_font(
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
         descriptor_layout: Arc<DescriptorSetLayout>,
         path: &str,
     ) -> VerboseResult<(Arc<Image>, Arc<DescriptorPool>, Arc<DescriptorSet>)> {

@@ -51,7 +51,7 @@ pub mod openxrrendercore {
     use utilities::prelude::*;
     use vulkan_rs::prelude::*;
 
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex};
 
     use super::openxrintegration::OpenXRIntegration;
 
@@ -65,7 +65,7 @@ pub mod openxrrendercore {
         pub fn new(
             _: &OpenXRIntegration,
             _: &Arc<Device>,
-            _: &Arc<Queue>,
+            _: &Arc<Mutex<Queue>>,
         ) -> VerboseResult<(Self, TargetMode<()>)> {
             create_error!("OpenXR feature not enabled!")
         }

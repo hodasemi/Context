@@ -1,12 +1,12 @@
 use crate::prelude::*;
 use presentation::prelude::*;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub struct VulkanCore {
     device: Arc<Device>,
-    queue: Arc<Queue>,
+    queue: Arc<Mutex<Queue>>,
 }
 
 impl VulkanCore {
@@ -103,7 +103,7 @@ impl VulkanCore {
         &self.device
     }
 
-    pub fn queue(&self) -> &Arc<Queue> {
+    pub fn queue(&self) -> &Arc<Mutex<Queue>> {
         &self.queue
     }
 }

@@ -14,7 +14,7 @@ use super::openvrintegration::OpenVRIntegration;
 use crate::{p_try, prelude::*, renderbackend::RenderBackend};
 
 use std::mem::transmute;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub struct OpenVRRenderCore {
     compositor: Arc<Compositor>,
@@ -35,7 +35,7 @@ impl OpenVRRenderCore {
     pub fn new(
         vri: &OpenVRIntegration,
         device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        queue: &Arc<Mutex<Queue>>,
     ) -> VerboseResult<(Self, TargetMode<()>)> {
         let sample_count = VK_SAMPLE_COUNT_1_BIT;
         let (width, height) = vri.image_size();
@@ -61,8 +61,8 @@ impl OpenVRRenderCore {
         .format(format)
         .build(device, queue)?;
 
-        let left_openvr_texture = Self::create_openvr_texture(&left_image, sample_count);
-        let right_openvr_texture = Self::create_openvr_texture(&right_iamge, sample_count);
+        let left_openvr_texture = Self::create_openvr_texture(&left_image, sample_count)?;
+        let right_openvr_texture = Self::create_openvr_texture(&right_iamge, sample_count)?;
 
         let images = TargetMode::Stereo(vec![left_image], vec![right_iamge]);
         let openvr_textures = TargetMode::Stereo(left_openvr_texture, right_openvr_texture);
@@ -90,19 +90,21 @@ impl OpenVRRenderCore {
     fn create_openvr_texture(
         image: &Arc<Image>,
         sample_count: VkSampleCountFlags,
-    ) -> OpenVRVulkanTexture {
-        OpenVRVulkanTexture {
+    ) -> VerboseResult<OpenVRVulkanTexture> {
+        let queue_lock = image.queue().lock()?;
+
+        Ok(OpenVRVulkanTexture {
             image: unsafe { transmute::<VkImage, u64>(image.vk_handle()) },
             device: unsafe { transmute(image.device().vk_handle()) },
             physical_device: unsafe { transmute(image.device().physical_device().vk_handle()) },
             instance: unsafe { transmute(image.device().physical_device().instance().vk_handle()) },
-            queue: unsafe { transmute(image.queue().vk_handle()) },
-            queue_family_index: image.queue().family_index(),
+            queue: unsafe { transmute(queue_lock.vk_handle()) },
+            queue_family_index: queue_lock.family_index(),
             width: image.width(),
             height: image.height(),
             format: image.vk_format() as u32,
             sample_count: sample_count.into(),
-        }
+        })
     }
 
     #[inline]
@@ -212,9 +214,11 @@ impl RenderCore for OpenVRRenderCore {
 
         let submits = &[SubmitInfo::new().add_command_buffer(&command_buffer)];
 
-        self.render_backend
-            .queue()
-            .submit(Some(&self.render_fence), submits)?;
+        {
+            let queue_lock = self.render_backend.queue().lock()?;
+
+            queue_lock.submit(Some(&self.render_fence), submits)?;
+        }
 
         // make sure command_buffer is ready
         self.render_backend

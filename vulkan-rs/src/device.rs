@@ -11,7 +11,7 @@ use std::fmt;
 use std::mem::{size_of, MaybeUninit};
 use std::ptr;
 use std::slice;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use core::ffi::c_void;
 
@@ -143,7 +143,7 @@ impl Device {
         device: &Arc<Device>,
         queue_family_index: u32,
         queue_index: u32,
-    ) -> Arc<Queue> {
+    ) -> Arc<Mutex<Queue>> {
         Queue::new(
             device.clone(),
             device.get_device_queue(queue_family_index, queue_index),
