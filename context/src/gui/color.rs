@@ -43,19 +43,19 @@ impl TryFrom<&str> for Color {
                 create_error!("wrong hex color format");
             }
 
-            let r = match u8::from_str_radix(&without_prefix[0..1], 16) {
+            let r = match u8::from_str_radix(&without_prefix[0..2], 16) {
                 Ok(r) => r,
                 Err(err) => create_error!(format!("failed parsing red part of {} ({})", text, err)),
             };
 
-            let g = match u8::from_str_radix(&without_prefix[2..3], 16) {
+            let g = match u8::from_str_radix(&without_prefix[2..4], 16) {
                 Ok(g) => g,
                 Err(err) => {
                     create_error!(format!("failed parsing green part of {} ({})", text, err))
                 }
             };
 
-            let b = match u8::from_str_radix(&without_prefix[4..5], 16) {
+            let b = match u8::from_str_radix(&without_prefix[4..6], 16) {
                 Ok(b) => b,
                 Err(err) => {
                     create_error!(format!("failed parsing blue part of {} ({})", text, err))
@@ -76,4 +76,18 @@ impl TryFrom<&str> for Color {
             _ => create_error!(format!("value is not a valid text color {}", text)),
         }
     }
+}
+
+#[test]
+fn simple_color_conversion() {
+    let color = Color::try_from("white").unwrap();
+
+    assert_eq!(color, Color::White)
+}
+
+#[test]
+fn hex_color_conversion() {
+    let color = Color::try_from("#FFFFFF").unwrap();
+
+    assert_eq!(color, Color::Custom(255, 255, 255))
 }
