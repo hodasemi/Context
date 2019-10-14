@@ -168,18 +168,31 @@ macro_rules! Extensions {
             }
 
             pub fn activate(&mut self, extension_name: &str) -> Result<(), String> {
-                $(
-                    if extension_name == $name {
-                        self.$var = true;
-                        return Ok(());
-                    }
-                )+
+                if self.check(extension_name) {
+                    return Ok(());
+                }
 
                 Err(format!("Extension ({}) currently not supported!", extension_name))
             }
 
             pub unsafe fn add_raw_name(&mut self, extension_name: &str) {
+                if self.check(extension_name) {
+                    return;
+                }
+
+                println!("Add raw extension name: {}", extension_name);
                 self.raw_names.push(extension_name.to_string());
+            }
+
+            fn check(&mut self, extension_name: &str) -> bool {
+                $(
+                    if extension_name == $name {
+                        self.$var = true;
+                        return true;
+                    }
+                )+
+
+                false
             }
         }
 
