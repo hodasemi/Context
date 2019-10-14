@@ -25,17 +25,6 @@ Extensions!(DeviceExtensions, {
     (memory_budget, "VK_EXT_memory_budget"),
     (memory_priority, "VK_EXT_memory_priority"),
     (debug_marker, "VK_EXT_debug_marker"),
-    (dedicated_allocation, "VK_KHR_dedicated_allocation"),
-    (external_fence, "VK_KHR_external_fence"),
-    (external_fence_fd, "VK_KHR_external_fence_fd"),
-    (external_memory, "VK_KHR_external_memory"),
-    (external_memory_fd, "VK_KHR_external_memory_fd"),
-    (external_semaphore, "VK_KHR_external_semaphore"),
-    (external_semaphore_fd, "VK_KHR_external_semaphore_fd"),
-    (nv_dedicated_allocation, "VK_NV_dedicated_allocation"),
-    (nv_external_memory, "VK_NV_external_memory"),
-    (nv_external_memory_win32, "VK_NV_external_memory_win32"),
-    (nv_win32_keyed_mutex, "VK_NV_win32_keyed_mutex"),
 });
 
 pub struct MemoryHeap {

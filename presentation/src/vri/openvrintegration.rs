@@ -36,7 +36,14 @@ impl OpenVRIntegration {
 
         for extension_name in extension_names {
             let string = p_try!(extension_name.into_string());
-            extensions.activate(&string)?;
+
+            if let Err(err) = extensions.activate(&string) {
+                println!("{}", err);
+
+                unsafe {
+                    extensions.add_raw_name(&string);
+                }
+            }
         }
 
         Ok(())
@@ -54,7 +61,14 @@ impl OpenVRIntegration {
 
         for extension_name in extension_names {
             let string = p_try!(extension_name.into_string());
-            extensions.activate(&string)?;
+
+            if let Err(err) = extensions.activate(&string) {
+                println!("{}", err);
+
+                unsafe {
+                    extensions.add_raw_name(&string);
+                }
+            }
         }
 
         Ok(())

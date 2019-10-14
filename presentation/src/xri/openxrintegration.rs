@@ -56,7 +56,13 @@ impl OpenXRIntegration {
                 .collect();
 
         for extension_name in extension_names {
-            extensions.activate(&extension_name)?;
+            if let Err(err) = extensions.activate(&extension_name) {
+                println!("{}", err);
+
+                unsafe {
+                    extensions.add_raw_name(&extension_name);
+                }
+            }
         }
 
         Ok(())
@@ -73,7 +79,13 @@ impl OpenXRIntegration {
                 .collect();
 
         for extension_name in extension_names {
-            extensions.activate(&extension_name)?;
+            if let Err(err) = extensions.activate(&extension_name) {
+                println!("{}", err);
+
+                unsafe {
+                    extensions.add_raw_name(&extension_name);
+                }
+            }
         }
 
         Ok(())

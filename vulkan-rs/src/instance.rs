@@ -26,10 +26,6 @@ Extensions!(InstanceExtensions, {
     (win32_surface, "VK_KHR_win32_surface"),
     (surface, "VK_KHR_surface"),
     (physical_device_properties2, "VK_KHR_get_physical_device_properties2"),
-    (external_fence_capabilities, "VK_KHR_external_fence_capabilities"),
-    (external_memory_capabilities, "VK_KHR_external_memory_capabilities"),
-    (nv_external_memory_capabilities, "VK_NV_external_memory_capabilities"),
-    (external_semaphore_capabilities, "VK_KHR_external_semaphore_capabilities"),
 });
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]

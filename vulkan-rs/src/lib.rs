@@ -106,6 +106,8 @@ macro_rules! Extensions {
             $(
                 pub $var: bool,
             )+
+
+            raw_names: Vec<String>,
         }
 
         impl $struct_name {
@@ -129,6 +131,9 @@ macro_rules! Extensions {
                         list.push(VkString::new($name));
                     }
                 )+
+
+                let mut raw_vk_names = self.raw_names.iter().map(|raw_name| VkString::new(raw_name)).collect();
+                list.append(&mut raw_vk_names);
 
                 list
             }
@@ -162,17 +167,20 @@ macro_rules! Extensions {
                 }
             }
 
-            pub fn activate(&mut self, extensions_name: &str) -> Result<(), String> {
+            pub fn activate(&mut self, extension_name: &str) -> Result<(), String> {
                 $(
-                    if extensions_name == $name {
+                    if extension_name == $name {
                         self.$var = true;
                         return Ok(());
                     }
                 )+
 
-                Err(format!("Extension ({}) currently not supported!", extensions_name))
+                Err(format!("Extension ({}) currently not supported!", extension_name))
             }
 
+            pub unsafe fn add_raw_name(&mut self, extension_name: &str) {
+                self.raw_names.push(extension_name.to_string());
+            }
         }
 
         impl Default for $struct_name {
@@ -181,6 +189,8 @@ macro_rules! Extensions {
                     $(
                         $var: false,
                     )+
+
+                    raw_names: Vec::new(),
                 }
             }
         }
