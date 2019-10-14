@@ -34,6 +34,7 @@ Extensions!(DeviceExtensions, {
     (external_semaphore_fd, "VK_KHR_external_semaphore_fd"),
     (nv_dedicated_allocation, "VK_NV_dedicated_allocation"),
     (nv_external_memory, "VK_NV_external_memory"),
+    (nv_external_memory_win32, "VK_NV_external_memory_win32"),
 });
 
 pub struct MemoryHeap {
