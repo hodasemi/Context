@@ -30,6 +30,7 @@ Extensions!(InstanceExtensions, {
     (external_memory_capabilities, "VK_KHR_external_memory_capabilities"),
     (nv_external_memory_capabilities, "VK_NV_external_memory_capabilities"),
     (external_semaphore_capabilities, "VK_KHR_external_semaphore_capabilities"),
+    (nv_dedicated_allocation, "VK_NV_dedicated_allocation"),
 });
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
