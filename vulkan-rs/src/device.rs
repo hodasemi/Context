@@ -35,6 +35,7 @@ Extensions!(DeviceExtensions, {
     (nv_dedicated_allocation, "VK_NV_dedicated_allocation"),
     (nv_external_memory, "VK_NV_external_memory"),
     (nv_external_memory_win32, "VK_NV_external_memory_win32"),
+    (nv_win32_keyed_mutex, "VK_NV_win32_keyed_mutex"),
 });
 
 pub struct MemoryHeap {
