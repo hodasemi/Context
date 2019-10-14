@@ -28,6 +28,7 @@ Extensions!(InstanceExtensions, {
     (physical_device_properties2, "VK_KHR_get_physical_device_properties2"),
     (external_fence_capabilities, "VK_KHR_external_fence_capabilities"),
     (external_memory_capabilities, "VK_KHR_external_memory_capabilities"),
+    (nv_external_memory_capabilities, "VK_NV_external_memory_capabilities"),
     (external_semaphore_capabilities, "VK_KHR_external_semaphore_capabilities"),
 });
 
