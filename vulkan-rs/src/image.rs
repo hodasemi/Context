@@ -21,7 +21,7 @@ struct ImageCreateInfo {
 }
 
 impl ImageCreateInfo {
-    fn default(source_type: ImageSourceType, sample_count: VkSampleCountFlags) -> Self {
+    fn default(source_type: ImageSourceType) -> Self {
         ImageCreateInfo {
             vk_image_create_info: VkImageCreateInfo::new(
                 0,
@@ -34,7 +34,7 @@ impl ImageCreateInfo {
                 },
                 1,
                 1,
-                sample_count,
+                VK_SAMPLE_COUNT_1_BIT,
                 VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                 VK_SHARING_MODE_EXCLUSIVE,
@@ -56,6 +56,7 @@ struct PreinitializedImage {
     height: u32,
 
     layers: u32,
+    sample_count: VkSampleCountFlagBits,
 }
 
 enum ImageBuilderInternalType {
@@ -127,6 +128,7 @@ impl ImageBuilder {
                     height: preinitialized_image.height,
                     layers: preinitialized_image.layers,
                     levels: 1,
+                    sample_count: preinitialized_image.sample_count,
                 }))
             }
             ImageBuilderInternalType::NewImage(ref info) => match info.source_type {
@@ -233,6 +235,19 @@ impl ImageBuilder {
             }
             ImageBuilderInternalType::PreinitializedImage(preinitialized_image) => {
                 preinitialized_image.format = format;
+            }
+        }
+
+        self
+    }
+
+    pub fn sample_count(mut self, sample_count: impl Into<VkSampleCountFlagBits>) -> Self {
+        match &mut self.builder_type {
+            ImageBuilderInternalType::NewImage(info) => {
+                info.vk_image_create_info.samples = sample_count.into();
+            }
+            ImageBuilderInternalType::PreinitializedImage(preinitialized_image) => {
+                preinitialized_image.sample_count = sample_count.into();
             }
         }
 
@@ -572,6 +587,7 @@ impl ImageBuilder {
             height: info.vk_image_create_info.extent.height,
             layers: info.vk_image_create_info.arrayLayers,
             levels: info.vk_image_create_info.mipLevels,
+            sample_count: info.vk_image_create_info.samples,
         }))
     }
 
@@ -642,6 +658,7 @@ pub struct Image {
     height: u32,
     layers: u32, // array layers
     levels: u32, // mip map levels
+    sample_count: VkSampleCountFlagBits,
 }
 
 impl Image {
@@ -666,6 +683,7 @@ impl Image {
                 width,
                 height,
                 layers: 1,
+                sample_count: VK_SAMPLE_COUNT_1_BIT.into(),
             },
         ))
     }
@@ -681,8 +699,7 @@ impl Image {
     /// * `width` - The target width of the image
     /// * `height` - The target height of the image
     pub fn raw_source(source: Vec<u8>, width: u32, height: u32) -> ImageBuilder {
-        let mut create_info =
-            ImageCreateInfo::default(ImageSourceType::Raw(source), VK_SAMPLE_COUNT_1_BIT);
+        let mut create_info = ImageCreateInfo::default(ImageSourceType::Raw(source));
         create_info.vk_image_create_info.extent.width = width;
         create_info.vk_image_create_info.extent.height = height;
         create_info.vk_image_create_info.extent.depth = 1;
@@ -737,8 +754,7 @@ impl Image {
         }
 
         let array_len = array.len() as u32;
-        let mut create_info =
-            ImageCreateInfo::default(ImageSourceType::Array(array), VK_SAMPLE_COUNT_1_BIT);
+        let mut create_info = ImageCreateInfo::default(ImageSourceType::Array(array));
         create_info.vk_image_create_info.arrayLayers = array_len;
         create_info.vk_image_create_info.imageType = VK_IMAGE_TYPE_2D;
         create_info.vk_image_create_info.extent.width = width;
@@ -769,7 +785,8 @@ impl Image {
         usage: impl Into<VkImageUsageFlagBits>,
         sample_count: VkSampleCountFlags,
     ) -> ImageBuilder {
-        let mut create_info = ImageCreateInfo::default(ImageSourceType::Empty, sample_count);
+        let mut create_info = ImageCreateInfo::default(ImageSourceType::Empty);
+        create_info.vk_image_create_info.samples = sample_count.into();
         create_info.vk_image_create_info.extent.width = width;
         create_info.vk_image_create_info.extent.height = height;
         create_info.vk_image_create_info.extent.depth = 1;
@@ -808,6 +825,10 @@ impl Image {
 
     pub fn levels(&self) -> u32 {
         self.levels
+    }
+
+    pub fn sample_count(&self) -> VkSampleCountFlagBits {
+        self.sample_count
     }
 
     pub fn full_resource_range(&self) -> VkImageSubresourceRange {

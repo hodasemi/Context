@@ -9,7 +9,6 @@ use std::ops::Deref;
 use std::slice;
 use std::sync::{Arc, Mutex};
 
-#[derive(Clone)]
 pub enum TargetMode<T> {
     Single(T),
     Stereo(T, T),
@@ -41,6 +40,15 @@ impl<T> TargetMode<T> {
         match self {
             TargetMode::Single(_) => create_error!("stereo_mut() on Single"),
             TargetMode::Stereo(l, r) => Ok((l, r)),
+        }
+    }
+}
+
+impl<T: Clone> Clone for TargetMode<T> {
+    fn clone(&self) -> TargetMode<T> {
+        match self {
+            TargetMode::Single(t) => TargetMode::Single(t.clone()),
+            TargetMode::Stereo(lhs, rhs) => TargetMode::Stereo(lhs.clone(), rhs.clone()),
         }
     }
 }

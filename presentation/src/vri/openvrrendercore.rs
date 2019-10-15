@@ -24,8 +24,8 @@ pub struct OpenVRRenderCore {
 
     render_fence: Arc<Fence>,
 
-    openvr_textures: TargetMode<OpenVRVulkanTexture>,
     current_image_indices: TargetMode<usize>,
+    images: TargetMode<Vec<Arc<Image>>>,
 
     width: u32,
     height: u32,
@@ -44,7 +44,10 @@ impl OpenVRRenderCore {
         let left_image = Image::no_source(
             width,
             height,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                | VK_IMAGE_USAGE_SAMPLED_BIT,
             sample_count,
         )
         .nearest_sampler()
@@ -61,13 +64,8 @@ impl OpenVRRenderCore {
         .format(format)
         .build(device, queue)?;
 
-        let left_openvr_texture = Self::create_openvr_texture(&left_image, sample_count)?;
-        let right_openvr_texture = Self::create_openvr_texture(&right_iamge, sample_count)?;
-
         let images = TargetMode::Stereo(vec![left_image], vec![right_iamge]);
-        let openvr_textures = TargetMode::Stereo(left_openvr_texture, right_openvr_texture);
-
-        let render_backend = RenderBackend::new(device, queue, images, format)?;
+        let render_backend = RenderBackend::new(device, queue, images.clone(), format)?;
 
         let openvr_render_core = OpenVRRenderCore {
             compositor: vri.compositor().clone(),
@@ -77,8 +75,8 @@ impl OpenVRRenderCore {
 
             render_fence: Fence::new().build(device.clone())?,
 
-            openvr_textures,
             current_image_indices: TargetMode::Stereo(0, 0),
+            images,
 
             width,
             height,
@@ -87,13 +85,21 @@ impl OpenVRRenderCore {
         Ok((openvr_render_core, TargetMode::Stereo((), ())))
     }
 
-    fn create_openvr_texture(
-        image: &Arc<Image>,
-        sample_count: VkSampleCountFlags,
-    ) -> VerboseResult<OpenVRVulkanTexture> {
+    #[inline]
+    fn submit_left(&self, image: &Arc<Image>) -> VerboseResult<()> {
+        self.submit(image, OpenVREye::Left)
+    }
+
+    #[inline]
+    fn submit_right(&self, image: &Arc<Image>) -> VerboseResult<()> {
+        self.submit(image, OpenVREye::Right)
+    }
+
+    #[inline]
+    fn submit(&self, image: &Arc<Image>, eye: OpenVREye) -> VerboseResult<()> {
         let queue_lock = image.queue().lock()?;
 
-        Ok(OpenVRVulkanTexture {
+        let vulkan_texture = OpenVRVulkanTexture {
             image: unsafe { transmute::<VkImage, u64>(image.vk_handle()) },
             device: unsafe { transmute(image.device().vk_handle()) },
             physical_device: unsafe { transmute(image.device().physical_device().vk_handle()) },
@@ -103,22 +109,9 @@ impl OpenVRRenderCore {
             width: image.width(),
             height: image.height(),
             format: image.vk_format() as u32,
-            sample_count: sample_count.into(),
-        })
-    }
+            sample_count: image.sample_count().into(),
+        };
 
-    #[inline]
-    fn submit_left(&self, vulkan_texture: OpenVRVulkanTexture) -> VerboseResult<()> {
-        self.submit(vulkan_texture, OpenVREye::Left)
-    }
-
-    #[inline]
-    fn submit_right(&self, vulkan_texture: OpenVRVulkanTexture) -> VerboseResult<()> {
-        self.submit(vulkan_texture, OpenVREye::Right)
-    }
-
-    #[inline]
-    fn submit(&self, vulkan_texture: OpenVRVulkanTexture, eye: OpenVREye) -> VerboseResult<()> {
         let texture = Texture {
             handle: Handle::Vulkan(vulkan_texture),
             color_space: ColorSpace::Linear,
@@ -226,10 +219,11 @@ impl RenderCore for OpenVRRenderCore {
             .wait_for_fences(&[&self.render_fence], true, 2_000_000_000)?;
         self.render_fence.reset();
 
-        let (left_texture, right_texture) = self.openvr_textures.stereo()?;
+        let (left_images, right_images) = self.images.stereo()?;
+        let (left_index, right_index) = self.current_image_indices.stereo()?;
 
-        self.submit_left(*left_texture)?;
-        self.submit_right(*right_texture)?;
+        self.submit_left(&left_images[*left_index])?;
+        self.submit_right(&right_images[*right_index])?;
 
         Ok(true)
     }
