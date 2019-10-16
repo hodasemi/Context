@@ -142,6 +142,7 @@ impl OpenXRRenderCore {
             queue,
             TargetMode::Stereo(left_swapchain_images, right_swapchain_images),
             VkFormat::from(format),
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
         )?;
 
         let blend_modes = xri.enumerate_environment_blend_modes(view_config_type)?;

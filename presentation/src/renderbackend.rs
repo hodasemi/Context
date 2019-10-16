@@ -75,6 +75,7 @@ pub struct RenderBackend {
     swapchain_images: RefCell<TargetMode<Vec<Arc<Image>>>>,
     gui_framebuffers: RefCell<TargetMode<Vec<Arc<Framebuffer>>>>,
     image_count: Cell<usize>,
+    target_layout: VkImageLayout,
 
     cmd_pool: Arc<CommandPool>,
     command_buffer: Arc<CommandBuffer>,
@@ -102,8 +103,9 @@ impl RenderBackend {
         queue: &Arc<Mutex<Queue>>,
         images: TargetMode<Vec<Arc<Image>>>,
         format: VkFormat,
+        target_layout: VkImageLayout,
     ) -> VerboseResult<RenderBackend> {
-        let gui_render_pass = Self::create_gui_render_pass(device, format)?;
+        let gui_render_pass = Self::create_gui_render_pass(device, format, target_layout)?;
 
         let gui_framebuffers = Self::create_framebuffers(device, &images, &gui_render_pass)?;
 
@@ -136,6 +138,7 @@ impl RenderBackend {
             swapchain_images: RefCell::new(images),
             gui_framebuffers: RefCell::new(gui_framebuffers),
             image_count: Cell::new(image_count),
+            target_layout,
 
             cmd_pool: command_pool,
             command_buffer,
@@ -186,6 +189,7 @@ impl RenderBackend {
                         &self.command_buffer,
                         swapchain_image,
                         VkClearColorValue::float32([0.0, 0.0, 0.0, 1.0]),
+                        self.target_layout,
                     );
                 }
                 (
@@ -199,12 +203,14 @@ impl RenderBackend {
                         &self.command_buffer,
                         left_image,
                         VkClearColorValue::float32([1.0, 0.0, 0.0, 1.0]),
+                        self.target_layout,
                     );
 
                     Self::clear_image(
                         &self.command_buffer,
                         right_image,
                         VkClearColorValue::float32([0.0, 1.0, 0.0, 1.0]),
+                        self.target_layout,
                     );
                 }
                 _ => create_error!("not fitting target modes!"),
@@ -306,7 +312,8 @@ impl RenderBackend {
             }
         });
 
-        let gui_render_pass = Self::create_gui_render_pass(&self.device, format)?;
+        let gui_render_pass =
+            Self::create_gui_render_pass(&self.device, format, self.target_layout)?;
 
         let gui_framebuffers = Self::create_framebuffers(&self.device, &images, &gui_render_pass)?;
 
@@ -409,10 +416,11 @@ impl RenderBackend {
         command_buffer: &Arc<CommandBuffer>,
         image: &Arc<Image>,
         clear_color: VkClearColorValue,
+        target_layout: VkImageLayout,
     ) {
         command_buffer.set_full_image_layout(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         command_buffer.clear_color_image(image, clear_color);
-        command_buffer.set_full_image_layout(image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        command_buffer.set_full_image_layout(image, target_layout);
     }
 
     /// Creates a simple render pass for gui rendering
@@ -420,6 +428,7 @@ impl RenderBackend {
     fn create_gui_render_pass(
         device: &Arc<Device>,
         final_format: VkFormat,
+        target_layout: VkImageLayout,
     ) -> VerboseResult<Arc<RenderPass>> {
         let target_reference = VkAttachmentReference {
             attachment: 0,
@@ -443,8 +452,8 @@ impl RenderBackend {
             VK_ATTACHMENT_STORE_OP_STORE,
             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
             VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            target_layout,
+            target_layout,
         )];
 
         let dependencies = [

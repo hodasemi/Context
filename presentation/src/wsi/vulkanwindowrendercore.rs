@@ -70,8 +70,13 @@ impl VulkanWindowRenderCore {
         let image_sem = Semaphore::new(device.clone())?;
         let fence = Fence::new().build(device.clone())?;
 
-        let render_backend =
-            RenderBackend::new(device, queue, TargetMode::Single(swapchain_images), format)?;
+        let render_backend = RenderBackend::new(
+            device,
+            queue,
+            TargetMode::Single(swapchain_images),
+            format,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        )?;
 
         let window_render_core = VulkanWindowRenderCore {
             swapchain,

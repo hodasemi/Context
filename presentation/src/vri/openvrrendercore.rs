@@ -57,7 +57,10 @@ impl OpenVRRenderCore {
         let right_iamge = Image::no_source(
             width,
             height,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                | VK_IMAGE_USAGE_SAMPLED_BIT,
             sample_count,
         )
         .nearest_sampler()
@@ -65,7 +68,13 @@ impl OpenVRRenderCore {
         .build(device, queue)?;
 
         let images = TargetMode::Stereo(vec![left_image], vec![right_iamge]);
-        let render_backend = RenderBackend::new(device, queue, images.clone(), format)?;
+        let render_backend = RenderBackend::new(
+            device,
+            queue,
+            images.clone(),
+            format,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        )?;
 
         let openvr_render_core = OpenVRRenderCore {
             compositor: vri.compositor().clone(),
