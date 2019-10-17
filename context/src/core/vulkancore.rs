@@ -25,7 +25,7 @@ impl VulkanCore {
             app_info.application_version,
             &engine_name,
             app_info.engine_version,
-            VK_MAKE_VERSION(1, 0, 0),
+            VK_MAKE_VERSION(1, 1, 0),
         );
 
         // instance extensions
