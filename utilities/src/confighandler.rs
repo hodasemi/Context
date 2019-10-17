@@ -77,6 +77,19 @@ impl Value {
         Ok(())
     }
 
+    pub fn apply_value<T>(&self) -> VerboseResult<T>
+    where
+        T: FromStr,
+    {
+        match self {
+            Value::Value(value_string) => match value_string.parse::<T>() {
+                Ok(val) => Ok(val),
+                Err(_) => create_error!(format!("error parsing value {}", value_string)),
+            },
+            _ => create_error!("key_value has wrong format".to_string()),
+        }
+    }
+
     /// Converts the internal array to the given type array
     ///
     /// # Arguments
@@ -99,6 +112,27 @@ impl Value {
         };
 
         Ok(())
+    }
+
+    pub fn apply_array<T>(&self) -> VerboseResult<Vec<T>>
+    where
+        T: FromStr,
+    {
+        match self {
+            Value::Array(value_array) => {
+                let mut target_array = Vec::with_capacity(value_array.len());
+
+                for value_string in value_array {
+                    match value_string.parse::<T>() {
+                        Ok(val) => target_array.push(val),
+                        Err(_) => create_error!(format!("error parsing array {}", value_string)),
+                    }
+                }
+
+                Ok(target_array)
+            }
+            _ => create_error!("key_value has wrong format".to_string()),
+        }
     }
 }
 
