@@ -11,7 +11,7 @@ use std::str::FromStr;
 use std::collections::HashMap;
 
 /// Value abstraction to convert to and from values
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Value {
     Value(String),
     Array(Vec<String>),
