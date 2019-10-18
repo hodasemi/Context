@@ -456,23 +456,27 @@ impl RenderBackend {
             target_layout,
         )];
 
+        let src_access = Image::src_layout_to_access(target_layout);
+        let dst_access = Image::dst_layout_to_access(target_layout);
+        let render_pass_image_access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
         let dependencies = [
             VkSubpassDependency::new(
                 VK_SUBPASS_EXTERNAL,
                 0,
-                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                Image::src_layout_to_access(target_layout),
-                VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                CommandBuffer::access_to_stage(src_access),
+                CommandBuffer::access_to_stage(render_pass_image_access),
+                src_access,
+                render_pass_image_access,
                 VK_DEPENDENCY_BY_REGION_BIT,
             ),
             VkSubpassDependency::new(
                 0,
                 VK_SUBPASS_EXTERNAL,
-                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                Image::dst_layout_to_access(target_layout),
+                CommandBuffer::access_to_stage(render_pass_image_access),
+                CommandBuffer::access_to_stage(dst_access),
+                render_pass_image_access,
+                dst_access,
                 VK_DEPENDENCY_BY_REGION_BIT,
             ),
         ];

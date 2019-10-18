@@ -435,7 +435,9 @@ impl CommandBuffer {
         image.image_layout.set(new_image_layout);
     }
 
-    fn access_to_stage(access_mask: VkAccessFlagBits) -> VkPipelineStageFlags {
+    pub fn access_to_stage(access_mask: impl Into<VkAccessFlagBits>) -> VkPipelineStageFlags {
+        let access_mask = access_mask.into();
+
         if access_mask == 0 {
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
         } else if access_mask == VK_ACCESS_HOST_WRITE_BIT {
