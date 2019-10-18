@@ -39,35 +39,12 @@ impl OpenVRRenderCore {
     ) -> VerboseResult<(Self, TargetMode<()>)> {
         let sample_count = VK_SAMPLE_COUNT_1_BIT;
         let (width, height) = vri.image_size();
-        let format = VK_FORMAT_R8G8B8A8_UNORM;
+        let format = VK_FORMAT_R8G8B8A8_SRGB;
 
-        let left_image = Image::no_source(
-            width,
-            height,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-                | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-                | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                | VK_IMAGE_USAGE_SAMPLED_BIT,
-            sample_count,
-        )
-        .nearest_sampler()
-        .format(format)
-        .build(device, queue)?;
+        let (left_image, right_image) =
+            Self::create_target_images(width, height, sample_count, format, device, queue)?;
 
-        let right_iamge = Image::no_source(
-            width,
-            height,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-                | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-                | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                | VK_IMAGE_USAGE_SAMPLED_BIT,
-            sample_count,
-        )
-        .nearest_sampler()
-        .format(format)
-        .build(device, queue)?;
-
-        let images = TargetMode::Stereo(vec![left_image], vec![right_iamge]);
+        let images = TargetMode::Stereo(vec![left_image], vec![right_image]);
         let render_backend = RenderBackend::new(
             device,
             queue,
@@ -92,6 +69,33 @@ impl OpenVRRenderCore {
         };
 
         Ok((openvr_render_core, TargetMode::Stereo((), ())))
+    }
+
+    #[inline]
+    fn create_target_images(
+        width: u32,
+        height: u32,
+        sample_count: VkSampleCountFlags,
+        format: VkFormat,
+        device: &Arc<Device>,
+        queue: &Arc<Mutex<Queue>>,
+    ) -> VerboseResult<(Arc<Image>, Arc<Image>)> {
+        let image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+            | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+        let left_image = Image::no_source(width, height, image_usage, sample_count)
+            .nearest_sampler()
+            .format(format)
+            .build(device, queue)?;
+
+        let right_image = Image::no_source(width, height, image_usage, sample_count)
+            .nearest_sampler()
+            .format(format)
+            .build(device, queue)?;
+
+        Ok((left_image, right_image))
     }
 
     #[inline]
@@ -126,7 +130,11 @@ impl OpenVRRenderCore {
             color_space: ColorSpace::Linear,
         };
 
-        p_try!(unsafe { self.compositor.submit(eye, &texture, None, None) });
+        // p_try!(unsafe { self.compositor.submit(eye, &texture, None, None) });
+
+        if let Err(err) = unsafe { self.compositor.submit(eye, &texture, None, None) } {
+            println!("{:?}", err);
+        }
 
         Ok(())
     }

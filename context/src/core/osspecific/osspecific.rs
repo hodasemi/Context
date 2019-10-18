@@ -53,7 +53,7 @@ pub struct OsSpecific;
 
 #[cfg(not(target_os = "linux"))]
 impl OsSpecific {
-    pub fn new(config: &OsSpecificConfig) -> OsSpecific {
+    pub fn new(_config: &OsSpecificConfig) -> OsSpecific {
         OsSpecific
     }
 

@@ -849,6 +849,46 @@ impl Image {
             layerCount: self.layers,
         }
     }
+
+    pub fn src_layout_to_access(image_layout: VkImageLayout) -> VkAccessFlagBits {
+        match image_layout {
+            VK_IMAGE_LAYOUT_UNDEFINED => 0u32.into(),
+            VK_IMAGE_LAYOUT_PREINITIALIZED => VK_ACCESS_HOST_WRITE_BIT.into(),
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL => VK_ACCESS_TRANSFER_WRITE_BIT.into(),
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL => VK_ACCESS_TRANSFER_READ_BIT.into(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL => VK_ACCESS_SHADER_READ_BIT.into(),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL => VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT.into(),
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR => VK_ACCESS_MEMORY_READ_BIT.into(),
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL => {
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                    | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+            }
+            VK_IMAGE_LAYOUT_GENERAL => VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+            _ => unimplemented!("source image layout ({:?})", image_layout),
+        }
+    }
+
+    pub fn dst_layout_to_access(image_layout: VkImageLayout) -> VkAccessFlagBits {
+        match image_layout {
+            VK_IMAGE_LAYOUT_UNDEFINED => {
+                panic!("target image layout must not be VK_IMAGE_LAYOUT_UNDEFINED")
+            }
+            VK_IMAGE_LAYOUT_PREINITIALIZED => {
+                panic!("target image layout must not be VK_IMAGE_LAYOUT_PREINITIALIZED")
+            }
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL => VK_ACCESS_TRANSFER_WRITE_BIT.into(),
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL => VK_ACCESS_TRANSFER_READ_BIT.into(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL => VK_ACCESS_SHADER_READ_BIT.into(),
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL => VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT.into(),
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR => VK_ACCESS_MEMORY_READ_BIT.into(),
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL => {
+                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                    | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+            }
+            VK_IMAGE_LAYOUT_GENERAL => VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL => VK_ACCESS_SHADER_READ_BIT.into(),
+        }
+    }
 }
 
 unsafe impl Send for Image {}

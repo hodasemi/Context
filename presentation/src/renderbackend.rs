@@ -462,7 +462,7 @@ impl RenderBackend {
                 0,
                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                VK_ACCESS_MEMORY_READ_BIT,
+                Image::src_layout_to_access(target_layout),
                 VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                 VK_DEPENDENCY_BY_REGION_BIT,
             ),
@@ -472,7 +472,7 @@ impl RenderBackend {
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                 VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                 VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                VK_ACCESS_MEMORY_READ_BIT,
+                Image::dst_layout_to_access(target_layout),
                 VK_DEPENDENCY_BY_REGION_BIT,
             ),
         ];
