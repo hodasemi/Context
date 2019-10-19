@@ -30,6 +30,7 @@ pub struct OpenXRRenderCore {
     render_backend: RenderBackend,
     render_fence: Arc<Fence>,
 
+    format: VkFormat,
     width: u32,
     height: u32,
     current_image_indices: RefCell<TargetMode<usize>>,
@@ -141,8 +142,6 @@ impl OpenXRRenderCore {
             device,
             queue,
             TargetMode::Stereo(left_swapchain_images, right_swapchain_images),
-            VkFormat::from(format),
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
         )?;
 
         let blend_modes = xri.enumerate_environment_blend_modes(view_config_type)?;
@@ -166,6 +165,7 @@ impl OpenXRRenderCore {
             render_backend,
             render_fence: Fence::new().build(device.clone())?,
 
+            format: VkFormat::from(format),
             width,
             height,
             current_image_indices: RefCell::new(TargetMode::Stereo(0, 0)),
@@ -337,6 +337,10 @@ impl OpenXRRenderCore {
 }
 
 impl RenderCore for OpenXRRenderCore {
+    fn format(&self) -> VkFormat {
+        self.format
+    }
+
     fn next_frame(&self) -> VerboseResult<bool> {
         if !self.handle_events()? {
             return Ok(false);
@@ -450,35 +454,21 @@ impl RenderCore for OpenXRRenderCore {
         self.render_backend.clear_scenes()
     }
 
-    // callbacks
-    fn set_resize_callback(
-        &self,
-        resize_callback: Option<Box<dyn Fn(u32, u32) -> VerboseResult<()>>>,
-    ) -> VerboseResult<()> {
-        self.render_backend.set_resize_callback(resize_callback)
+    // post process handling
+    fn add_post_processing_routine(&self, post_process: Arc<dyn PostProcess>) -> VerboseResult<()> {
+        self.render_backend
+            .add_post_processing_routine(post_process)
     }
 
-    fn set_gui_callback(
+    fn remove_post_processing_routine(
         &self,
-        render_gui: Option<
-            Box<
-                dyn Fn(
-                    Option<Eye>,
-                    usize,
-                    &Arc<Framebuffer>,
-                    &Arc<RenderPass>,
-                ) -> VerboseResult<Arc<CommandBuffer>>,
-            >,
-        >,
+        post_process: &Arc<dyn PostProcess>,
     ) -> VerboseResult<()> {
-        self.render_backend.set_gui_callback(render_gui)
+        self.render_backend
+            .remove_post_processing_routine(post_process)
     }
 
     // getter
-    // fn current_index(&self) -> TargetMode<usize> {
-    //     self.current_image_indices.borrow().clone()
-    // }
-
     fn image_count(&self) -> usize {
         self.render_backend.image_count()
     }
@@ -486,15 +476,6 @@ impl RenderCore for OpenXRRenderCore {
     fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
         self.render_backend.images()
     }
-
-    fn gui_render_pass(&self) -> &Arc<RenderPass> {
-        &self.render_backend.gui_render_pass()
-    }
-
-    // fn current_gui_framebuffer(&self) -> Arc<Framebuffer> {
-    //     self.render_backend
-    //         .current_gui_framebuffer(self.current_image_index.get())
-    // }
 
     fn allocate_primary_buffer(&self) -> VerboseResult<Arc<CommandBuffer>> {
         self.render_backend.allocate_primary_buffer()

@@ -899,23 +899,7 @@ impl ContextBuilder {
                     render_core,
                 )?);
 
-                {
-                    let gui_handler = gui_handler.clone();
-
-                    render_core.set_gui_callback(Some(Box::new(
-                        move |eye, index, framebuffer, render_pass| {
-                            gui_handler.render(eye, index, framebuffer, render_pass)
-                        },
-                    )))?;
-                }
-
-                {
-                    let gui_handler = gui_handler.clone();
-
-                    render_core.set_resize_callback(Some(Box::new(move |width, height| {
-                        gui_handler.enqueue_resize(width, height)
-                    })))?;
-                }
+                render_core.add_post_processing_routine(gui_handler.clone())?;
 
                 Ok(gui_handler)
             }

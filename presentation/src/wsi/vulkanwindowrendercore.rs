@@ -14,6 +14,8 @@ pub struct VulkanWindowRenderCore {
     swapchain: Arc<Swapchain>,
     surface: Arc<Surface>,
 
+    format: VkFormat,
+
     image_available_sem: Arc<Semaphore>,
     render_finished_sem: Arc<Semaphore>,
     render_fence: Arc<Fence>,
@@ -70,17 +72,14 @@ impl VulkanWindowRenderCore {
         let image_sem = Semaphore::new(device.clone())?;
         let fence = Fence::new().build(device.clone())?;
 
-        let render_backend = RenderBackend::new(
-            device,
-            queue,
-            TargetMode::Single(swapchain_images),
-            format,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        )?;
+        let render_backend =
+            RenderBackend::new(device, queue, TargetMode::Single(swapchain_images))?;
 
         let window_render_core = VulkanWindowRenderCore {
             swapchain,
             surface,
+
+            format,
 
             render_finished_sem: render_sem,
             image_available_sem: image_sem,
@@ -136,7 +135,6 @@ impl VulkanWindowRenderCore {
 
         self.render_backend.resize(
             TargetMode::Single(swapchain_images),
-            format,
             self.swapchain.width(),
             self.swapchain.height(),
         )?;
@@ -146,6 +144,10 @@ impl VulkanWindowRenderCore {
 }
 
 impl RenderCore for VulkanWindowRenderCore {
+    fn format(&self) -> VkFormat {
+        self.format
+    }
+
     fn next_frame(&self) -> VerboseResult<bool> {
         self.aquire_next_image_index()?;
 
@@ -197,35 +199,21 @@ impl RenderCore for VulkanWindowRenderCore {
         self.render_backend.clear_scenes()
     }
 
-    // callbacks
-    fn set_resize_callback(
-        &self,
-        resize_callback: Option<Box<dyn Fn(u32, u32) -> VerboseResult<()>>>,
-    ) -> VerboseResult<()> {
-        self.render_backend.set_resize_callback(resize_callback)
+    // post process handling
+    fn add_post_processing_routine(&self, post_process: Arc<dyn PostProcess>) -> VerboseResult<()> {
+        self.render_backend
+            .add_post_processing_routine(post_process)
     }
 
-    fn set_gui_callback(
+    fn remove_post_processing_routine(
         &self,
-        render_gui: Option<
-            Box<
-                dyn Fn(
-                    Option<Eye>,
-                    usize,
-                    &Arc<Framebuffer>,
-                    &Arc<RenderPass>,
-                ) -> VerboseResult<Arc<CommandBuffer>>,
-            >,
-        >,
+        post_process: &Arc<dyn PostProcess>,
     ) -> VerboseResult<()> {
-        self.render_backend.set_gui_callback(render_gui)
+        self.render_backend
+            .remove_post_processing_routine(post_process)
     }
 
     // getter
-    // fn current_index(&self) -> TargetMode<usize> {
-    //     TargetMode::Single(self.current_image_index.get())
-    // }
-
     fn image_count(&self) -> usize {
         self.render_backend.image_count()
     }
@@ -233,15 +221,6 @@ impl RenderCore for VulkanWindowRenderCore {
     fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
         self.render_backend.images()
     }
-
-    fn gui_render_pass(&self) -> &Arc<RenderPass> {
-        &self.render_backend.gui_render_pass()
-    }
-
-    // fn current_gui_framebuffer(&self) -> Arc<Framebuffer> {
-    //     self.render_backend
-    //         .current_gui_framebuffer(self.current_image_index.get())
-    // }
 
     fn allocate_primary_buffer(&self) -> VerboseResult<Arc<CommandBuffer>> {
         self.render_backend.allocate_primary_buffer()

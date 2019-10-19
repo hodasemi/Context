@@ -6,7 +6,6 @@ use vulkan_rs::prelude::*;
 
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
-use std::slice;
 use std::sync::{Arc, Mutex};
 
 pub enum TargetMode<T> {
@@ -69,32 +68,15 @@ pub struct RenderBackend {
     device: Arc<Device>,
     queue: Arc<Mutex<Queue>>,
 
-    gui_render_pass: Arc<RenderPass>,
-
     // driver provided images
     swapchain_images: RefCell<TargetMode<Vec<Arc<Image>>>>,
-    gui_framebuffers: RefCell<TargetMode<Vec<Arc<Framebuffer>>>>,
     image_count: Cell<usize>,
-    target_layout: VkImageLayout,
 
     cmd_pool: Arc<CommandPool>,
     command_buffer: Arc<CommandBuffer>,
 
     scenes: RefCell<Vec<Arc<dyn TScene>>>,
-
-    resize_callback: RefCell<Option<Box<dyn Fn(u32, u32) -> VerboseResult<()>>>>,
-    render_gui: RefCell<
-        Option<
-            Box<
-                dyn Fn(
-                    Option<Eye>,
-                    usize,
-                    &Arc<Framebuffer>,
-                    &Arc<RenderPass>,
-                ) -> VerboseResult<Arc<CommandBuffer>>,
-            >,
-        >,
-    >,
+    post_processes: RefCell<Vec<Arc<dyn PostProcess>>>,
 }
 
 impl RenderBackend {
@@ -102,13 +84,7 @@ impl RenderBackend {
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
         images: TargetMode<Vec<Arc<Image>>>,
-        format: VkFormat,
-        target_layout: VkImageLayout,
     ) -> VerboseResult<RenderBackend> {
-        let gui_render_pass = Self::create_gui_render_pass(device, format, target_layout)?;
-
-        let gui_framebuffers = Self::create_framebuffers(device, &images, &gui_render_pass)?;
-
         let image_count = match &images {
             TargetMode::Single(images) => images.len(),
             TargetMode::Stereo(left_images, right_images) => {
@@ -133,20 +109,14 @@ impl RenderBackend {
             device: device.clone(),
             queue: queue.clone(),
 
-            gui_render_pass,
-
             swapchain_images: RefCell::new(images),
-            gui_framebuffers: RefCell::new(gui_framebuffers),
             image_count: Cell::new(image_count),
-            target_layout,
 
             cmd_pool: command_pool,
             command_buffer,
 
             scenes: RefCell::new(Vec::new()),
-
-            resize_callback: RefCell::new(None),
-            render_gui: RefCell::new(None),
+            post_processes: RefCell::new(Vec::new()),
         })
     }
 }
@@ -180,6 +150,7 @@ impl RenderBackend {
         // clear the current swapchain image
         {
             let swapchain_images = self.swapchain_images.borrow();
+            let target_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
             match (&image_indices, swapchain_images.deref()) {
                 (TargetMode::Single(image_index), TargetMode::Single(images)) => {
@@ -189,7 +160,7 @@ impl RenderBackend {
                         &self.command_buffer,
                         swapchain_image,
                         VkClearColorValue::float32([0.0, 0.0, 0.0, 1.0]),
-                        self.target_layout,
+                        target_layout,
                     );
                 }
                 (
@@ -203,14 +174,14 @@ impl RenderBackend {
                         &self.command_buffer,
                         left_image,
                         VkClearColorValue::float32([1.0, 0.0, 0.0, 1.0]),
-                        self.target_layout,
+                        target_layout,
                     );
 
                     Self::clear_image(
                         &self.command_buffer,
                         right_image,
                         VkClearColorValue::float32([0.0, 1.0, 0.0, 1.0]),
-                        self.target_layout,
+                        target_layout,
                     );
                 }
                 _ => create_error!("not fitting target modes!"),
@@ -222,74 +193,9 @@ impl RenderBackend {
             scene.process(&self.command_buffer, &image_indices, &vr_data)?;
         }
 
-        // gui rendering
-        if let Some(render_gui) = self.render_gui.try_borrow()?.as_ref() {
-            let gui_framebuffers = self.gui_framebuffers.borrow();
-
-            match (&image_indices, gui_framebuffers.deref()) {
-                (TargetMode::Single(image_index), TargetMode::Single(framebuffers)) => {
-                    let framebuffer = &framebuffers[*image_index];
-
-                    self.command_buffer.begin_render_pass_full(
-                        &self.gui_render_pass,
-                        framebuffer,
-                        &[],
-                        VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
-                    );
-
-                    self.command_buffer.execute_commands(&[&render_gui(
-                        None,
-                        *image_index,
-                        framebuffer,
-                        &self.gui_render_pass,
-                    )?]);
-
-                    self.command_buffer.end_render_pass();
-                }
-                (
-                    TargetMode::Stereo(left_image_index, right_image_index),
-                    TargetMode::Stereo(left_framebuffers, right_framebuffers),
-                ) => {
-                    // submit left framebuffer
-                    let left_framebuffer = &left_framebuffers[*left_image_index];
-
-                    self.command_buffer.begin_render_pass_full(
-                        &self.gui_render_pass,
-                        left_framebuffer,
-                        &[],
-                        VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
-                    );
-
-                    self.command_buffer.execute_commands(&[&render_gui(
-                        Some(Eye::Left),
-                        *left_image_index,
-                        left_framebuffer,
-                        &self.gui_render_pass,
-                    )?]);
-
-                    self.command_buffer.end_render_pass();
-
-                    // submit right framebuffer
-                    let right_framebuffer = &right_framebuffers[*right_image_index];
-
-                    self.command_buffer.begin_render_pass_full(
-                        &self.gui_render_pass,
-                        right_framebuffer,
-                        &[],
-                        VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
-                    );
-
-                    self.command_buffer.execute_commands(&[&render_gui(
-                        Some(Eye::Right),
-                        *right_image_index,
-                        right_framebuffer,
-                        &self.gui_render_pass,
-                    )?]);
-
-                    self.command_buffer.end_render_pass();
-                }
-                _ => create_error!("not fitting target modes!"),
-            }
+        // post processing
+        for post_process in self.post_processes.try_borrow()?.iter() {
+            post_process.process(&self.command_buffer, &image_indices)?;
         }
 
         self.command_buffer.end()?;
@@ -300,7 +206,6 @@ impl RenderBackend {
     pub fn resize(
         &self,
         images: TargetMode<Vec<Arc<Image>>>,
-        format: VkFormat,
         width: u32,
         height: u32,
     ) -> VerboseResult<()> {
@@ -312,20 +217,14 @@ impl RenderBackend {
             }
         });
 
-        let gui_render_pass =
-            Self::create_gui_render_pass(&self.device, format, self.target_layout)?;
-
-        let gui_framebuffers = Self::create_framebuffers(&self.device, &images, &gui_render_pass)?;
-
-        *self.gui_framebuffers.try_borrow_mut()? = gui_framebuffers;
         *self.swapchain_images.try_borrow_mut()? = images;
-
-        if let Some(resize_callback) = self.resize_callback.try_borrow()?.as_ref() {
-            resize_callback(width, height)?;
-        }
 
         for scene in self.scenes.try_borrow()?.iter() {
             scene.resize()?;
+        }
+
+        for post_process in self.post_processes.try_borrow()?.iter() {
+            post_process.resize(width, height)?;
         }
 
         Ok(())
@@ -356,30 +255,38 @@ impl RenderBackend {
         Ok(())
     }
 
-    // callbacks
-    pub fn set_resize_callback(
+    pub fn add_post_processing_routine(
         &self,
-        resize_callback: Option<Box<dyn Fn(u32, u32) -> VerboseResult<()>>>,
+        post_process: Arc<dyn PostProcess>,
     ) -> VerboseResult<()> {
-        *self.resize_callback.try_borrow_mut()? = resize_callback;
+        let mut post_processes = self.post_processes.try_borrow_mut()?;
+
+        // only add if it isn't present already
+        if post_processes
+            .iter()
+            .find(|p| Arc::ptr_eq(p, &post_process))
+            .is_none()
+        {
+            post_processes.push(post_process);
+
+            post_processes.sort_by(|lhs, rhs| lhs.priority().cmp(&rhs.priority()));
+        }
 
         Ok(())
     }
 
-    pub fn set_gui_callback(
+    pub fn remove_post_processing_routine(
         &self,
-        render_gui: Option<
-            Box<
-                dyn Fn(
-                    Option<Eye>,
-                    usize,
-                    &Arc<Framebuffer>,
-                    &Arc<RenderPass>,
-                ) -> VerboseResult<Arc<CommandBuffer>>,
-            >,
-        >,
+        post_process: &Arc<dyn PostProcess>,
     ) -> VerboseResult<()> {
-        *self.render_gui.try_borrow_mut()? = render_gui;
+        let mut post_processes = self.post_processes.try_borrow_mut()?;
+
+        if let Some(index) = post_processes
+            .iter()
+            .position(|p| Arc::ptr_eq(p, post_process))
+        {
+            post_processes.remove(index);
+        }
 
         Ok(())
     }
@@ -392,14 +299,6 @@ impl RenderBackend {
     pub fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
         self.swapchain_images.borrow().clone()
     }
-
-    pub fn gui_render_pass(&self) -> &Arc<RenderPass> {
-        &self.gui_render_pass
-    }
-
-    // pub fn current_gui_framebuffer(&self, image_index: usize) -> Arc<Framebuffer> {
-    //     self.gui_framebuffers.borrow()[image_index].clone()
-    // }
 
     pub fn allocate_primary_buffer(&self) -> VerboseResult<Arc<CommandBuffer>> {
         CommandPool::allocate_primary_buffer(&self.cmd_pool)
@@ -421,114 +320,5 @@ impl RenderBackend {
         command_buffer.set_full_image_layout(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         command_buffer.clear_color_image(image, clear_color);
         command_buffer.set_full_image_layout(image, target_layout);
-    }
-
-    /// Creates a simple render pass for gui rendering
-    /// Only color framebuffer is attached
-    fn create_gui_render_pass(
-        device: &Arc<Device>,
-        final_format: VkFormat,
-        target_layout: VkImageLayout,
-    ) -> VerboseResult<Arc<RenderPass>> {
-        let target_reference = VkAttachmentReference {
-            attachment: 0,
-            layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        };
-
-        let subpass_descriptions = [VkSubpassDescription::new(
-            0,
-            &[],
-            slice::from_ref(&target_reference),
-            &[],
-            None,
-            &[],
-        )];
-
-        let attachments = [VkAttachmentDescription::new(
-            0,
-            final_format,
-            VK_SAMPLE_COUNT_1_BIT,
-            VK_ATTACHMENT_LOAD_OP_LOAD,
-            VK_ATTACHMENT_STORE_OP_STORE,
-            VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-            VK_ATTACHMENT_STORE_OP_DONT_CARE,
-            target_layout,
-            target_layout,
-        )];
-
-        let src_access = Image::src_layout_to_access(target_layout);
-        let dst_access = Image::dst_layout_to_access(target_layout);
-        let render_pass_image_access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        let dependencies = [
-            VkSubpassDependency::new(
-                VK_SUBPASS_EXTERNAL,
-                0,
-                CommandBuffer::access_to_stage(src_access),
-                CommandBuffer::access_to_stage(render_pass_image_access),
-                src_access,
-                render_pass_image_access,
-                VK_DEPENDENCY_BY_REGION_BIT,
-            ),
-            VkSubpassDependency::new(
-                0,
-                VK_SUBPASS_EXTERNAL,
-                CommandBuffer::access_to_stage(render_pass_image_access),
-                CommandBuffer::access_to_stage(dst_access),
-                render_pass_image_access,
-                dst_access,
-                VK_DEPENDENCY_BY_REGION_BIT,
-            ),
-        ];
-
-        let renderpass = RenderPass::new(
-            device.clone(),
-            &subpass_descriptions,
-            &attachments,
-            &dependencies,
-        )?;
-
-        Ok(renderpass)
-    }
-
-    fn create_framebuffers(
-        device: &Arc<Device>,
-        target_images: &TargetMode<Vec<Arc<Image>>>,
-        render_pass: &Arc<RenderPass>,
-    ) -> VerboseResult<TargetMode<Vec<Arc<Framebuffer>>>> {
-        // closure to create array of framebuffer from array of images
-        let create_framebuffer = |device: &Arc<Device>,
-                                  images: &Vec<Arc<Image>>,
-                                  render_pass: &Arc<RenderPass>|
-         -> VerboseResult<Vec<Arc<Framebuffer>>> {
-            let mut framebuffers = Vec::with_capacity(images.len());
-
-            for image in images.iter() {
-                image.convert_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)?;
-
-                framebuffers.push(
-                    Framebuffer::new()
-                        .set_render_pass(render_pass)
-                        .add_attachment(&image)
-                        .build(device.clone())?,
-                )
-            }
-
-            Ok(framebuffers)
-        };
-
-        match target_images {
-            TargetMode::Single(images) => {
-                let framebuffers = create_framebuffer(device, images, render_pass)?;
-
-                Ok(TargetMode::Single(framebuffers))
-            }
-            TargetMode::Stereo(left_images, right_images) => {
-                let left_framebuffers = create_framebuffer(device, left_images, render_pass)?;
-                let right_framebuffers = create_framebuffer(device, right_images, render_pass)?;
-
-                Ok(TargetMode::Stereo(left_framebuffers, right_framebuffers))
-            }
-        }
     }
 }

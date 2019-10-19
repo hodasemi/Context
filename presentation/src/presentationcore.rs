@@ -58,12 +58,7 @@ impl ApplicationInfo {
 #[cfg(not(feature = "OpenXR"))]
 impl ApplicationInfo {
     fn as_openxr_info(&self) -> ApplicationInfo {
-        ApplicationInfo {
-            application_name: self.application_name.clone(),
-            application_version: self.application_version,
-            engine_name: self.engine_name.clone(),
-            engine_version: self.engine_version,
-        }
+        self.clone()
     }
 }
 

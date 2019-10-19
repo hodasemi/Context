@@ -24,6 +24,8 @@ pub struct OpenVRRenderCore {
 
     render_fence: Arc<Fence>,
 
+    format: VkFormat,
+
     current_image_indices: TargetMode<usize>,
     images: TargetMode<Vec<Arc<Image>>>,
 
@@ -45,13 +47,7 @@ impl OpenVRRenderCore {
             Self::create_target_images(width, height, sample_count, format, device, queue)?;
 
         let images = TargetMode::Stereo(vec![left_image], vec![right_image]);
-        let render_backend = RenderBackend::new(
-            device,
-            queue,
-            images.clone(),
-            format,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        )?;
+        let render_backend = RenderBackend::new(device, queue, images.clone())?;
 
         let openvr_render_core = OpenVRRenderCore {
             compositor: vri.compositor().clone(),
@@ -61,12 +57,19 @@ impl OpenVRRenderCore {
 
             render_fence: Fence::new().build(device.clone())?,
 
+            format,
+
             current_image_indices: TargetMode::Stereo(0, 0),
             images,
 
             width,
             height,
         };
+
+        let post_process = PostRenderLayoutBarrier::new(&openvr_render_core)?;
+        openvr_render_core
+            .render_backend
+            .add_post_processing_routine(post_process)?;
 
         Ok((openvr_render_core, TargetMode::Stereo((), ())))
     }
@@ -213,6 +216,10 @@ impl OpenVRRenderCore {
 }
 
 impl RenderCore for OpenVRRenderCore {
+    fn format(&self) -> VkFormat {
+        self.format
+    }
+
     fn next_frame(&self) -> VerboseResult<bool> {
         let wait_poses = p_try!(self.compositor.wait_get_poses());
 
@@ -258,28 +265,18 @@ impl RenderCore for OpenVRRenderCore {
         self.render_backend.clear_scenes()
     }
 
-    // callbacks
-    fn set_resize_callback(
-        &self,
-        resize_callback: Option<Box<dyn Fn(u32, u32) -> VerboseResult<()>>>,
-    ) -> VerboseResult<()> {
-        self.render_backend.set_resize_callback(resize_callback)
+    // post process handling
+    fn add_post_processing_routine(&self, post_process: Arc<dyn PostProcess>) -> VerboseResult<()> {
+        self.render_backend
+            .add_post_processing_routine(post_process)
     }
 
-    fn set_gui_callback(
+    fn remove_post_processing_routine(
         &self,
-        render_gui: Option<
-            Box<
-                dyn Fn(
-                    Option<Eye>,
-                    usize,
-                    &Arc<Framebuffer>,
-                    &Arc<RenderPass>,
-                ) -> VerboseResult<Arc<CommandBuffer>>,
-            >,
-        >,
+        post_process: &Arc<dyn PostProcess>,
     ) -> VerboseResult<()> {
-        self.render_backend.set_gui_callback(render_gui)
+        self.render_backend
+            .remove_post_processing_routine(post_process)
     }
 
     // getter
@@ -289,10 +286,6 @@ impl RenderCore for OpenVRRenderCore {
 
     fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
         self.render_backend.images()
-    }
-
-    fn gui_render_pass(&self) -> &Arc<RenderPass> {
-        &self.render_backend.gui_render_pass()
     }
 
     fn allocate_primary_buffer(&self) -> VerboseResult<Arc<CommandBuffer>> {
@@ -315,5 +308,52 @@ impl RenderCore for OpenVRRenderCore {
 impl std::fmt::Debug for OpenVRRenderCore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "OpenVRRenderCore {{ }}")
+    }
+}
+
+struct PostRenderLayoutBarrier {
+    left_images: Vec<Arc<Image>>,
+    right_images: Vec<Arc<Image>>,
+}
+
+impl PostRenderLayoutBarrier {
+    fn new(render_core: &OpenVRRenderCore) -> VerboseResult<Arc<Self>> {
+        let (left_images, right_images) = render_core.images.stereo()?;
+
+        Ok(Arc::new(PostRenderLayoutBarrier {
+            left_images: left_images.clone(),
+            right_images: right_images.clone(),
+        }))
+    }
+}
+
+impl PostProcess for PostRenderLayoutBarrier {
+    fn priority(&self) -> u32 {
+        // priority == 0 means that is executed lastly
+        0
+    }
+
+    fn process(
+        &self,
+        command_buffer: &Arc<CommandBuffer>,
+        indices: &TargetMode<usize>,
+    ) -> VerboseResult<()> {
+        let (left_index, right_index) = indices.stereo()?;
+
+        command_buffer.set_full_image_layout(
+            &self.left_images[*left_index],
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        );
+
+        command_buffer.set_full_image_layout(
+            &self.right_images[*right_index],
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        );
+
+        Ok(())
+    }
+
+    fn resize(&self, _: u32, _: u32) -> VerboseResult<()> {
+        Ok(())
     }
 }

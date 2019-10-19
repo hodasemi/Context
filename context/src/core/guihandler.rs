@@ -9,6 +9,7 @@ use cgmath::{ortho, Vector3};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::slice;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Default, Debug)]
@@ -57,6 +58,8 @@ pub struct GuiHandler {
 
     top_ui: RefCell<Option<Rc<dyn TopGui>>>,
 
+    render_pass: Arc<RenderPass>,
+    framebuffers: TargetMode<Vec<Arc<Framebuffer>>>,
     command_buffers: TargetMode<Vec<CommandBufferState>>,
 
     text_objects: GuiSeparator,
@@ -124,11 +127,13 @@ impl GuiHandler {
             }
         };
 
-        let (text_objs, color_layout) =
-            Self::init_text_objects(device, render_core.gui_render_pass())?;
-        let rect_objs = Self::init_rectangle_objects(device, render_core.gui_render_pass())?;
-        let single_color_objects =
-            Self::init_single_color_objects(device, render_core.gui_render_pass())?;
+        let render_pass =
+            Self::create_render_pass(device, render_core.format(), render_core.image_layout())?;
+        let framebuffers = Self::create_framebuffers(device, &render_core.images(), &render_pass)?;
+
+        let (text_objs, color_layout) = Self::init_text_objects(device, &render_pass)?;
+        let rect_objs = Self::init_rectangle_objects(device, &render_pass)?;
+        let single_color_objects = Self::init_single_color_objects(device, &render_pass)?;
 
         let (bitmap_texture, bitmap_desc_pool, bitmap_desc_set) = Self::init_bitmap_font(
             device,
@@ -155,6 +160,8 @@ impl GuiHandler {
 
             top_ui: RefCell::new(None),
 
+            render_pass,
+            framebuffers,
             command_buffers,
 
             text_objects: text_objs,
@@ -535,84 +542,134 @@ impl GuiHandler {
         Ok(())
     }
 
-    pub(crate) fn enqueue_resize(&self, width: u32, height: u32) -> VerboseResult<()> {
-        self.needs_update.set(true);
-        self.ortho
-            .set(ortho(0.0, width as f32, 0.0, height as f32, -1.0, 1.0));
-
-        self.width.set(width);
-        self.height.set(height);
-
-        for frameable in self.frameables.try_borrow()?.iter() {
-            frameable.resize()?;
-        }
-
-        Ok(())
-    }
-
     // ---------------------------------------------------------------------
     // ----------------------------  rendering  ----------------------------
     // ---------------------------------------------------------------------
+    /// Creates a simple render pass for gui rendering
+    /// Only color framebuffer is attached
+    fn create_render_pass(
+        device: &Arc<Device>,
+        final_format: VkFormat,
+        target_layout: VkImageLayout,
+    ) -> VerboseResult<Arc<RenderPass>> {
+        let target_reference = VkAttachmentReference {
+            attachment: 0,
+            layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        };
+
+        let subpass_descriptions = [VkSubpassDescription::new(
+            0,
+            &[],
+            slice::from_ref(&target_reference),
+            &[],
+            None,
+            &[],
+        )];
+
+        let attachments = [VkAttachmentDescription::new(
+            0,
+            final_format,
+            VK_SAMPLE_COUNT_1_BIT,
+            VK_ATTACHMENT_LOAD_OP_LOAD,
+            VK_ATTACHMENT_STORE_OP_STORE,
+            VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            target_layout,
+            target_layout,
+        )];
+
+        let src_access = Image::src_layout_to_access(target_layout);
+        let dst_access = Image::dst_layout_to_access(target_layout);
+        let render_pass_image_access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        let dependencies = [
+            VkSubpassDependency::new(
+                VK_SUBPASS_EXTERNAL,
+                0,
+                CommandBuffer::access_to_stage(src_access),
+                CommandBuffer::access_to_stage(render_pass_image_access),
+                src_access,
+                render_pass_image_access,
+                VK_DEPENDENCY_BY_REGION_BIT,
+            ),
+            VkSubpassDependency::new(
+                0,
+                VK_SUBPASS_EXTERNAL,
+                CommandBuffer::access_to_stage(render_pass_image_access),
+                CommandBuffer::access_to_stage(dst_access),
+                render_pass_image_access,
+                dst_access,
+                VK_DEPENDENCY_BY_REGION_BIT,
+            ),
+        ];
+
+        let renderpass = RenderPass::new(
+            device.clone(),
+            &subpass_descriptions,
+            &attachments,
+            &dependencies,
+        )?;
+
+        Ok(renderpass)
+    }
+
+    fn create_framebuffers(
+        device: &Arc<Device>,
+        target_images: &TargetMode<Vec<Arc<Image>>>,
+        render_pass: &Arc<RenderPass>,
+    ) -> VerboseResult<TargetMode<Vec<Arc<Framebuffer>>>> {
+        // closure to create array of framebuffer from array of images
+        let create_framebuffer = |device: &Arc<Device>,
+                                  images: &Vec<Arc<Image>>,
+                                  render_pass: &Arc<RenderPass>|
+         -> VerboseResult<Vec<Arc<Framebuffer>>> {
+            let mut framebuffers = Vec::with_capacity(images.len());
+
+            for image in images.iter() {
+                image.convert_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)?;
+
+                framebuffers.push(
+                    Framebuffer::new()
+                        .set_render_pass(render_pass)
+                        .add_attachment(&image)
+                        .build(device.clone())?,
+                )
+            }
+
+            Ok(framebuffers)
+        };
+
+        match target_images {
+            TargetMode::Single(images) => {
+                let framebuffers = create_framebuffer(device, images, render_pass)?;
+
+                Ok(TargetMode::Single(framebuffers))
+            }
+            TargetMode::Stereo(left_images, right_images) => {
+                let left_framebuffers = create_framebuffer(device, left_images, render_pass)?;
+                let right_framebuffers = create_framebuffer(device, right_images, render_pass)?;
+
+                Ok(TargetMode::Stereo(left_framebuffers, right_framebuffers))
+            }
+        }
+    }
+
     pub fn set_top_gui(&self, top_gui: Option<Rc<dyn TopGui>>) -> VerboseResult<()> {
         *self.top_ui.try_borrow_mut()? = top_gui;
 
         Ok(())
     }
 
-    pub(crate) fn render(
+    fn render(
         &self,
-        eye: Option<Eye>,
-        index: usize,
+        command_buffer_state: &CommandBufferState,
         framebuffer: &Arc<Framebuffer>,
-        render_pass: &Arc<RenderPass>,
-    ) -> VerboseResult<Arc<CommandBuffer>> {
-        if self.needs_update.get() {
-            match &self.command_buffers {
-                TargetMode::Single(command_buffers) => {
-                    for state in command_buffers {
-                        state.valid.set(false);
-                    }
-                }
-                TargetMode::Stereo(left_cbs, right_cbs) => {
-                    for state in left_cbs {
-                        state.valid.set(false);
-                    }
-
-                    for state in right_cbs {
-                        state.valid.set(false);
-                    }
-                }
-            }
-
-            let mut text_changes = self.text_change_queue.try_borrow_mut()?;
-
-            if !text_changes.is_empty() {
-                for text_change in text_changes.iter() {
-                    (text_change)()?;
-                }
-
-                text_changes.clear();
-            }
-
-            self.needs_update.set(false);
-        }
-
-        let command_buffer_state = match &self.command_buffers {
-            TargetMode::Single(command_buffers) => &command_buffers[index],
-            TargetMode::Stereo(left_cbs, right_cbs) => match eye {
-                Some(eye) => match eye {
-                    Eye::Left => &left_cbs[index],
-                    Eye::Right => &right_cbs[index],
-                },
-                None => create_error!("eye parameter needed for stereo mode"),
-            },
-        };
-
+    ) -> VerboseResult<()> {
         if !command_buffer_state.valid.get() {
             let gui_command_buffer = &command_buffer_state.command_buffer;
 
             let inheritance_info = CommandBuffer::inheritance_info(
-                Some(render_pass),
+                Some(&self.render_pass),
                 Some(0),
                 Some(framebuffer),
                 None,
@@ -732,7 +789,7 @@ impl GuiHandler {
             command_buffer_state.valid.set(true);
         }
 
-        Ok(command_buffer_state.command_buffer.clone())
+        Ok(())
     }
 }
 
@@ -1224,5 +1281,111 @@ impl GuiHandler {
             0,
             GraphicsPipelineExtensions::default(),
         )
+    }
+
+    #[inline]
+    fn select_rendering(
+        &self,
+        command_buffer: &Arc<CommandBuffer>,
+        command_buffer_states: &[CommandBufferState],
+        framebuffers: &[Arc<Framebuffer>],
+        index: usize,
+    ) -> VerboseResult<()> {
+        let command_buffer_state = &command_buffer_states[index];
+        let framebuffer = &framebuffers[index];
+
+        self.render(command_buffer_state, framebuffer)?;
+
+        command_buffer.begin_render_pass_full(
+            &self.render_pass,
+            framebuffer,
+            &[],
+            VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
+        );
+
+        command_buffer.execute_commands(&[&command_buffer_state.command_buffer]);
+
+        command_buffer.end_render_pass();
+
+        Ok(())
+    }
+}
+
+impl PostProcess for GuiHandler {
+    fn priority(&self) -> u32 {
+        50
+    }
+
+    fn process(
+        &self,
+        command_buffer: &Arc<CommandBuffer>,
+        indices: &TargetMode<usize>,
+    ) -> VerboseResult<()> {
+        if self.needs_update.get() {
+            match &self.command_buffers {
+                TargetMode::Single(command_buffers) => {
+                    for state in command_buffers {
+                        state.valid.set(false);
+                    }
+                }
+                TargetMode::Stereo(left_cbs, right_cbs) => {
+                    for state in left_cbs {
+                        state.valid.set(false);
+                    }
+
+                    for state in right_cbs {
+                        state.valid.set(false);
+                    }
+                }
+            }
+
+            let mut text_changes = self.text_change_queue.try_borrow_mut()?;
+
+            if !text_changes.is_empty() {
+                for text_change in text_changes.iter() {
+                    (text_change)()?;
+                }
+
+                text_changes.clear();
+            }
+
+            self.needs_update.set(false);
+        }
+
+        match (&self.command_buffers, &self.framebuffers, indices) {
+            (
+                TargetMode::Single(command_buffers),
+                TargetMode::Single(framebuffers),
+                TargetMode::Single(index),
+            ) => {
+                self.select_rendering(command_buffer, command_buffers, framebuffers, *index)?;
+            }
+            (
+                TargetMode::Stereo(left_cbs, right_cbs),
+                TargetMode::Stereo(left_frb, right_frb),
+                TargetMode::Stereo(left_index, right_index),
+            ) => {
+                self.select_rendering(command_buffer, left_cbs, left_frb, *left_index)?;
+                self.select_rendering(command_buffer, right_cbs, right_frb, *right_index)?;
+            }
+            _ => create_error!("unsupported target mode setup"),
+        };
+
+        Ok(())
+    }
+
+    fn resize(&self, width: u32, height: u32) -> VerboseResult<()> {
+        self.needs_update.set(true);
+        self.ortho
+            .set(ortho(0.0, width as f32, 0.0, height as f32, -1.0, 1.0));
+
+        self.width.set(width);
+        self.height.set(height);
+
+        for frameable in self.frameables.try_borrow()?.iter() {
+            frameable.resize()?;
+        }
+
+        Ok(())
     }
 }

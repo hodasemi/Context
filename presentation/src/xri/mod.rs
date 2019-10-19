@@ -72,6 +72,10 @@ pub mod openxrrendercore {
     }
 
     impl RenderCore for OpenXRRenderCore {
+        fn format(&self) -> VkFormat {
+            unimplemented!()
+        }
+
         fn next_frame(&self) -> VerboseResult<bool> {
             unimplemented!()
         }
@@ -89,26 +93,17 @@ pub mod openxrrendercore {
             unimplemented!()
         }
 
-        // callbacks
-        fn set_resize_callback(
+        // post process handling
+        fn add_post_processing_routine(
             &self,
-            _: Option<Box<dyn Fn(u32, u32) -> VerboseResult<()>>>,
+            _post_process: Arc<dyn PostProcess>,
         ) -> VerboseResult<()> {
             unimplemented!()
         }
 
-        fn set_gui_callback(
+        fn remove_post_processing_routine(
             &self,
-            _: Option<
-                Box<
-                    dyn Fn(
-                        Option<Eye>,
-                        usize,
-                        &Arc<Framebuffer>,
-                        &Arc<RenderPass>,
-                    ) -> VerboseResult<Arc<CommandBuffer>>,
-                >,
-            >,
+            _post_process: &Arc<dyn PostProcess>,
         ) -> VerboseResult<()> {
             unimplemented!()
         }
@@ -121,14 +116,6 @@ pub mod openxrrendercore {
         fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
             unimplemented!()
         }
-
-        fn gui_render_pass(&self) -> &Arc<RenderPass> {
-            unimplemented!()
-        }
-
-        // fn current_gui_framebuffer(&self) -> Arc<Framebuffer> {
-        //     unimplemented!()
-        // }
 
         fn allocate_primary_buffer(&self) -> VerboseResult<Arc<CommandBuffer>> {
             unimplemented!()
