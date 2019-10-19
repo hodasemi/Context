@@ -100,7 +100,7 @@ impl OpenVRRenderCore {
             .format(format)
             .build(device, queue)?;
 
-        left_image.convert_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)?;
+        right_image.convert_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)?;
 
         Ok((left_image, right_image))
     }
