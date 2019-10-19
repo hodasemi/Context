@@ -93,10 +93,14 @@ impl OpenVRRenderCore {
             .format(format)
             .build(device, queue)?;
 
+        left_image.convert_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)?;
+
         let right_image = Image::no_source(width, height, image_usage, sample_count)
             .nearest_sampler()
             .format(format)
             .build(device, queue)?;
+
+        left_image.convert_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)?;
 
         Ok((left_image, right_image))
     }
