@@ -11,3 +11,5 @@ pub mod guihandler;
 pub mod soundhandler;
 
 pub mod context;
+
+pub mod configs;

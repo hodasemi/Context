@@ -253,6 +253,21 @@ impl WindowSystemIntegration {
         Ok(())
     }
 
+    pub fn set_opacity(&self, opacity: f32) -> VerboseResult<()> {
+        self.window.try_borrow_mut()?.set_opacity(opacity)?;
+
+        Ok(())
+    }
+
+    pub fn set_icon<T: AsRef<Path>>(&self, bmp: T) -> VerboseResult<()> {
+        let surface = SDL_Surface::load_bmp(bmp)
+            .map_err(|err| format!("failed to load icon image: {}", err))?;
+
+        self.window.try_borrow_mut()?.set_icon(surface);
+
+        Ok(())
+    }
+
     pub fn set_cursor<T: AsRef<Path>>(&self, bmp: T) -> VerboseResult<()> {
         let surface = SDL_Surface::load_bmp(bmp)
             .map_err(|err| format!("failed to load cursor image: {}", err))?;

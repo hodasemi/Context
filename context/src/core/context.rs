@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use super::axisemulator::AxisEmulator;
+use super::configs::WindowConfig;
 use super::osspecific::osspecific::OsSpecific;
 use super::time::Time;
 use super::vulkancore::VulkanCore;
@@ -85,24 +86,16 @@ impl Context {
         Ok(())
     }
 
-    pub fn set_cursor<T: AsRef<Path>>(&self, bmp: T) -> VerboseResult<()> {
+    pub fn window_config<'a>(&'a self) -> VerboseResult<WindowConfig<'a>> {
         match self.presentation.backend() {
-            PresentationBackend::Window(wsi) => wsi.set_cursor(bmp)?,
-            PresentationBackend::OpenXR(_xri) => (),
-            PresentationBackend::OpenVR(_vri) => (),
-        };
-
-        Ok(())
-    }
-
-    pub fn toggle_fullscreen(&self) -> VerboseResult<()> {
-        match self.presentation.backend() {
-            PresentationBackend::Window(wsi) => wsi.set_fullscreen(!wsi.is_fullscreen()?)?,
-            PresentationBackend::OpenXR(_xri) => (),
-            PresentationBackend::OpenVR(_vri) => (),
-        };
-
-        Ok(())
+            PresentationBackend::Window(wsi) => Ok(WindowConfig::new(wsi)),
+            PresentationBackend::OpenXR(_xri) => {
+                create_error!("OpenXR backend has no window config")
+            }
+            PresentationBackend::OpenVR(_vri) => {
+                create_error!("OpenVR backend has no window config")
+            }
+        }
     }
 
     #[cfg(feature = "audio")]
