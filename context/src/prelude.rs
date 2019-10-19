@@ -1,5 +1,6 @@
 // structures
 pub use crate::core::{
+    configs::WindowConfig,
     context::{Context, Event, GameObject},
     osspecific::osspecific::OsSpecificConfig,
 };
