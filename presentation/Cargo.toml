@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 cgmath = "*"
+image = "*"
 utilities = { path = "../utilities" }
 vulkan-rs = { path = "../vulkan-rs" }
 openxr = { version = "*", default-features = false, features = ["static"], optional = true }
