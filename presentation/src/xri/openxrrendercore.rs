@@ -107,7 +107,7 @@ impl OpenXRRenderCore {
 
         for image in left_images {
             left_swapchain_images.push(
-                Image::preinitialized_image(
+                Image::from_preinitialized(
                     unsafe { mem::transmute(image) },
                     VkFormat::from(format),
                     width,
@@ -120,12 +120,12 @@ impl OpenXRRenderCore {
 
         let right_swapchain = p_try!(session.create_swapchain(&swapchain_ci));
 
-        let right_images = p_try!(left_swapchain.enumerate_images());
+        let right_images = p_try!(right_swapchain.enumerate_images());
         let mut right_swapchain_images = Vec::with_capacity(right_images.len());
 
         for image in right_images {
             right_swapchain_images.push(
-                Image::preinitialized_image(
+                Image::from_preinitialized(
                     unsafe { mem::transmute(image) },
                     VkFormat::from(format),
                     width,

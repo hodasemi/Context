@@ -670,7 +670,7 @@ impl Image {
     ///
     /// * `image` - valid VkImage handle
     /// * `format` -  format of this image
-    pub fn preinitialized_image(
+    pub fn from_preinitialized(
         image: VkImage,
         format: VkFormat,
         width: u32,
@@ -698,7 +698,7 @@ impl Image {
     /// * `source` - The color information for the image
     /// * `width` - The target width of the image
     /// * `height` - The target height of the image
-    pub fn raw_source(source: Vec<u8>, width: u32, height: u32) -> ImageBuilder {
+    pub fn from_raw(source: Vec<u8>, width: u32, height: u32) -> ImageBuilder {
         let mut create_info = ImageCreateInfo::default(ImageSourceType::Raw(source));
         create_info.vk_image_create_info.extent.width = width;
         create_info.vk_image_create_info.extent.height = height;
@@ -716,7 +716,7 @@ impl Image {
     /// # Arguments
     ///
     /// * `file` - The path to the file
-    pub fn file_source(file: &str) -> VerboseResult<ImageBuilder> {
+    pub fn from_file(file: &str) -> VerboseResult<ImageBuilder> {
         let texture = match image::open(file) {
             Ok(tex) => tex.to_rgba(),
             Err(err) => create_error!(format!("error loading image (\"{}\"): {}", file, err)),
@@ -724,7 +724,7 @@ impl Image {
 
         let (width, height) = texture.dimensions();
 
-        Ok(Self::raw_source(texture.into_raw(), width, height).format(VK_FORMAT_R8G8B8A8_UNORM))
+        Ok(Self::from_raw(texture.into_raw(), width, height).format(VK_FORMAT_R8G8B8A8_UNORM))
     }
 
     /// Creates an `ImageBuilder` where you can define the image for your needs
@@ -735,7 +735,7 @@ impl Image {
     /// # Arguments
     ///
     /// * `array` - Source images
-    pub fn array_source(array: Vec<Arc<Image>>) -> ImageBuilder {
+    pub fn from_array(array: Vec<Arc<Image>>) -> ImageBuilder {
         debug_assert!(array.is_empty(), "images array must not be empty");
 
         let width = array[0].width();
@@ -775,7 +775,7 @@ impl Image {
     /// * `height` - The target height of the image
     /// * `usage` - `VkImageUsageFlagBits` mask to define the image usage
     /// * `sample_count` - `VkSampleCountFlags` to define the image's sample count
-    pub fn no_source(
+    pub fn empty(
         width: u32,
         height: u32,
         usage: impl Into<VkImageUsageFlagBits>,

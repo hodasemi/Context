@@ -88,14 +88,14 @@ impl OpenVRRenderCore {
             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
             | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-        let left_image = Image::no_source(width, height, image_usage, sample_count)
+        let left_image = Image::empty(width, height, image_usage, sample_count)
             .nearest_sampler()
             .format(format)
             .build(device, queue)?;
 
         left_image.convert_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)?;
 
-        let right_image = Image::no_source(width, height, image_usage, sample_count)
+        let right_image = Image::empty(width, height, image_usage, sample_count)
             .nearest_sampler()
             .format(format)
             .build(device, queue)?;

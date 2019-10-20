@@ -62,7 +62,7 @@ impl VulkanWindowRenderCore {
 
         for image in swapchain.vk_images()? {
             swapchain_images.push(
-                Image::preinitialized_image(image, format, swapchain.width(), swapchain.height())
+                Image::from_preinitialized(image, format, swapchain.width(), swapchain.height())
                     .nearest_sampler()
                     .build(device, queue)?,
             );
@@ -122,7 +122,7 @@ impl VulkanWindowRenderCore {
 
         for image in self.swapchain.vk_images()? {
             swapchain_images.push(
-                Image::preinitialized_image(
+                Image::from_preinitialized(
                     image,
                     format,
                     self.swapchain.width(),

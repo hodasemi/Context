@@ -240,7 +240,7 @@ impl GuiHandler {
                 ._descriptor_set
                 .clone())
         } else {
-            let texture = Image::file_source(path)
+            let texture = Image::from_file(path)?
                 .format(VK_FORMAT_R8G8B8A8_UNORM)
                 .nearest_sampler()
                 .build(&self.device, &self.queue)?;
@@ -1001,7 +1001,7 @@ impl GuiHandler {
         descriptor_layout: Arc<DescriptorSetLayout>,
         path: &str,
     ) -> VerboseResult<(Arc<Image>, Arc<DescriptorPool>, Arc<DescriptorSet>)> {
-        let texture = Image::file_source(path)
+        let texture = Image::from_file(path)?
             .format(VK_FORMAT_R8G8B8A8_UNORM)
             .nearest_sampler()
             .build(device, queue)?;

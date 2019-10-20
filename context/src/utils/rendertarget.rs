@@ -397,7 +397,7 @@ impl<'a> RenderTargetBuilder<'a> {
                 unimplemented!();
             };
 
-            let mut image_builder = Image::no_source(
+            let mut image_builder = Image::empty(
                 self.width,
                 self.height,
                 target_info.usage,
