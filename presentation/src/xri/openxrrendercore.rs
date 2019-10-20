@@ -46,20 +46,19 @@ impl OpenXRRenderCore {
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
     ) -> VerboseResult<(OpenXRRenderCore, TargetMode<()>)> {
+        // create OpenXR session handle
         let (session, frame_waiter, frame_stream) = {
             let queue_lock = queue.lock()?;
 
             xri.create_session(device, queue_lock.family_index(), queue_lock.queue_index())?
         };
 
+        // request view parameter
         let view_config_type = Self::find_view_config_type(xri)?;
-
         let view_type_properties = p_try!(xri.view_config_properties(view_config_type));
         println!("OpenXR View Properties: {:#?}", view_type_properties);
-
         let system_properties = p_try!(xri.system_properties());
         OpenXRIntegration::print_system_properties(&system_properties);
-
         let (view_config_view, view_count) = Self::find_view_config_view(xri, view_config_type)?;
 
         // make sure that there are 2 views, since we implemented stereo 'TargetMode'
@@ -67,9 +66,11 @@ impl OpenXRRenderCore {
             create_error!("exactly 2 views are required");
         }
 
+        // define image extents
         let width = view_config_view.recommended_image_rect_width;
         let height = view_config_view.recommended_image_rect_height;
 
+        // query format
         let formats = p_try!(session.enumerate_swapchain_formats());
 
         let format = if formats
@@ -87,6 +88,7 @@ impl OpenXRRenderCore {
             formats[0]
         };
 
+        // create swapchains
         let swapchain_ci = SwapchainCreateInfo {
             create_flags: SwapchainCreateFlags::EMPTY,
             usage_flags: SwapchainUsageFlags::COLOR_ATTACHMENT | SwapchainUsageFlags::TRANSFER_DST,
@@ -110,6 +112,7 @@ impl OpenXRRenderCore {
             queue,
         )?;
 
+        // right swapchain
         let right_swapchain = p_try!(session.create_swapchain(&swapchain_ci));
         let right_swapchain_images = Self::create_swapchain_images(
             &right_swapchain,
@@ -122,12 +125,14 @@ impl OpenXRRenderCore {
 
         let swapchains = TargetMode::Stereo(left_swapchain, right_swapchain);
 
+        // create render backend for the heavy lifting
         let render_backend = RenderBackend::new(
             device,
             queue,
             TargetMode::Stereo(left_swapchain_images, right_swapchain_images),
         )?;
 
+        // query blend mode
         let blend_modes = xri.enumerate_environment_blend_modes(view_config_type)?;
 
         let blend_mode = if blend_modes.contains(&EnvironmentBlendMode::OPAQUE) {
@@ -136,6 +141,7 @@ impl OpenXRRenderCore {
             blend_modes[0]
         };
 
+        // create VR space
         let space = Self::create_space(&session)?;
 
         let openxr_render_core = OpenXRRenderCore {
