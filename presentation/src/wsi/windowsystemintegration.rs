@@ -2,8 +2,8 @@
 #![allow(improper_ctypes)]
 
 use sdl2;
-use sdl2::image::LoadSurface;
 use sdl2::mouse::Cursor;
+use sdl2::pixels::PixelFormatEnum;
 use sdl2::surface::Surface as SDL_Surface;
 use sdl2::sys::SDL_Window;
 use sdl2::video::{FullscreenType, WindowPos};
@@ -261,7 +261,21 @@ impl WindowSystemIntegration {
     }
 
     pub fn set_icon<T: AsRef<Path>>(&self, path: T) -> VerboseResult<()> {
-        let surface = SDL_Surface::from_file(path)?;
+        let texture = match image::open(path) {
+            Ok(tex) => tex.to_rgba(),
+            Err(err) => create_error!(format!("error loading image: {}", err)),
+        };
+
+        let (width, height) = texture.dimensions();
+        let mut texture_data = texture.into_raw();
+
+        let surface = SDL_Surface::from_data(
+            &mut texture_data,
+            width,
+            height,
+            width * 4,
+            PixelFormatEnum::RGBA8888,
+        )?;
 
         self.window.try_borrow_mut()?.set_icon(surface);
 
@@ -269,7 +283,21 @@ impl WindowSystemIntegration {
     }
 
     pub fn set_cursor<T: AsRef<Path>>(&self, path: T) -> VerboseResult<()> {
-        let surface = SDL_Surface::from_file(path)?;
+        let texture = match image::open(path) {
+            Ok(tex) => tex.to_rgba(),
+            Err(err) => create_error!(format!("error loading image: {}", err)),
+        };
+
+        let (width, height) = texture.dimensions();
+        let mut texture_data = texture.into_raw();
+
+        let surface = SDL_Surface::from_data(
+            &mut texture_data,
+            width,
+            height,
+            width * 4,
+            PixelFormatEnum::RGBA8888,
+        )?;
 
         let cursor = Cursor::from_surface(surface, 0, 0)
             .map_err(|err| format!("failed to load cursor: {}", err))?;
