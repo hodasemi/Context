@@ -62,9 +62,15 @@ impl VulkanWindowRenderCore {
 
         for image in swapchain.vk_images()? {
             swapchain_images.push(
-                Image::from_preinitialized(image, format, swapchain.width(), swapchain.height())
-                    .nearest_sampler()
-                    .build(device, queue)?,
+                Image::from_preinitialized(
+                    image,
+                    format,
+                    swapchain.width(),
+                    swapchain.height(),
+                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                )
+                .nearest_sampler()
+                .build(device, queue)?,
             );
         }
 
@@ -127,6 +133,7 @@ impl VulkanWindowRenderCore {
                     format,
                     self.swapchain.width(),
                     self.swapchain.height(),
+                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                 )
                 .nearest_sampler()
                 .build(self.render_backend.device(), self.render_backend.queue())?,

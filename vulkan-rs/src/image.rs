@@ -57,6 +57,7 @@ struct PreinitializedImage {
 
     layers: u32,
     sample_count: VkSampleCountFlagBits,
+    layout: VkImageLayout,
 }
 
 enum ImageBuilderInternalType {
@@ -109,7 +110,7 @@ impl ImageBuilder {
                     None => VkSampler::NULL_HANDLE,
                 };
 
-                Ok(Arc::new(Image {
+                let image = Arc::new(Image {
                     device: device.clone(),
                     queue: queue.clone(),
 
@@ -129,7 +130,13 @@ impl ImageBuilder {
                     layers: preinitialized_image.layers,
                     levels: 1,
                     sample_count: preinitialized_image.sample_count,
-                }))
+                });
+
+                if preinitialized_image.layout != VK_IMAGE_LAYOUT_UNDEFINED {
+                    image.convert_layout(preinitialized_image.layout)?;
+                }
+
+                Ok(image)
             }
             ImageBuilderInternalType::NewImage(ref info) => match info.source_type {
                 ImageSourceType::Array(ref array) => {
@@ -675,6 +682,7 @@ impl Image {
         format: VkFormat,
         width: u32,
         height: u32,
+        layout: VkImageLayout,
     ) -> ImageBuilder {
         ImageBuilder::new(ImageBuilderInternalType::PreinitializedImage(
             PreinitializedImage {
@@ -684,6 +692,7 @@ impl Image {
                 height,
                 layers: 1,
                 sample_count: VK_SAMPLE_COUNT_1_BIT.into(),
+                layout,
             },
         ))
     }

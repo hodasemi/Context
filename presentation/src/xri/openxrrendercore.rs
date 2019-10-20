@@ -187,6 +187,7 @@ impl OpenXRRenderCore {
                     VkFormat::from(format),
                     width,
                     height,
+                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                 )
                 .nearest_sampler()
                 .build(device, queue)?,
