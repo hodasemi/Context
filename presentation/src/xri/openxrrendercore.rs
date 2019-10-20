@@ -101,40 +101,24 @@ impl OpenXRRenderCore {
 
         // left swapchain
         let left_swapchain = p_try!(session.create_swapchain(&swapchain_ci));
-
-        let left_images = p_try!(left_swapchain.enumerate_images());
-        let mut left_swapchain_images = Vec::with_capacity(left_images.len());
-
-        for image in left_images {
-            left_swapchain_images.push(
-                Image::from_preinitialized(
-                    unsafe { mem::transmute(image) },
-                    VkFormat::from(format),
-                    width,
-                    height,
-                )
-                .nearest_sampler()
-                .build(device, queue)?,
-            );
-        }
+        let left_swapchain_images = Self::create_swapchain_images(
+            &left_swapchain,
+            width,
+            height,
+            VkFormat::from(format),
+            device,
+            queue,
+        )?;
 
         let right_swapchain = p_try!(session.create_swapchain(&swapchain_ci));
-
-        let right_images = p_try!(right_swapchain.enumerate_images());
-        let mut right_swapchain_images = Vec::with_capacity(right_images.len());
-
-        for image in right_images {
-            right_swapchain_images.push(
-                Image::from_preinitialized(
-                    unsafe { mem::transmute(image) },
-                    VkFormat::from(format),
-                    width,
-                    height,
-                )
-                .nearest_sampler()
-                .build(device, queue)?,
-            );
-        }
+        let right_swapchain_images = Self::create_swapchain_images(
+            &right_swapchain,
+            width,
+            height,
+            VkFormat::from(format),
+            device,
+            queue,
+        )?;
 
         let swapchains = TargetMode::Stereo(left_swapchain, right_swapchain);
 
@@ -176,6 +160,34 @@ impl OpenXRRenderCore {
         };
 
         Ok((openxr_render_core, TargetMode::Stereo((), ())))
+    }
+
+    #[inline]
+    fn create_swapchain_images(
+        swapchain: &Swapchain<Vulkan>,
+        width: u32,
+        height: u32,
+        format: VkFormat,
+        device: &Arc<Device>,
+        queue: &Arc<Mutex<Queue>>,
+    ) -> VerboseResult<Vec<Arc<Image>>> {
+        let images = p_try!(swapchain.enumerate_images());
+        let mut swapchain_images = Vec::with_capacity(images.len());
+
+        for image in images {
+            swapchain_images.push(
+                Image::from_preinitialized(
+                    unsafe { mem::transmute(image) },
+                    VkFormat::from(format),
+                    width,
+                    height,
+                )
+                .nearest_sampler()
+                .build(device, queue)?,
+            );
+        }
+
+        Ok(swapchain_images)
     }
 
     fn find_view_config_type(xri: &OpenXRIntegration) -> VerboseResult<ViewConfigurationType> {
