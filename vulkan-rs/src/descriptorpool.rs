@@ -41,8 +41,7 @@ impl DescriptorPoolBuilder {
             }
         }
 
-        // panic should never occure
-        let layout = self.layout.expect("descriptor set layout was not set!");
+        let layout = self.layout.ok_or("descriptor set layout was not set!")?;
 
         let descriptor_pool_ci =
             VkDescriptorPoolCreateInfo::new(self.flags, self.descriptor_count, layout.pool_sizes());

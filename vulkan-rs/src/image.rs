@@ -716,19 +716,15 @@ impl Image {
     /// # Arguments
     ///
     /// * `file` - The path to the file
-    ///
-    /// # Panic
-    ///
-    /// This function panics if there is an error loading this image
-    pub fn file_source(file: &str) -> ImageBuilder {
+    pub fn file_source(file: &str) -> VerboseResult<ImageBuilder> {
         let texture = match image::open(file) {
             Ok(tex) => tex.to_rgba(),
-            Err(err) => panic!("error loading image (\"{}\"): {}", file, err),
+            Err(err) => create_error!(format!("error loading image (\"{}\"): {}", file, err)),
         };
 
         let (width, height) = texture.dimensions();
 
-        Self::raw_source(texture.into_raw(), width, height).format(VK_FORMAT_R8G8B8A8_UNORM)
+        Ok(Self::raw_source(texture.into_raw(), width, height).format(VK_FORMAT_R8G8B8A8_UNORM))
     }
 
     /// Creates an `ImageBuilder` where you can define the image for your needs
@@ -740,16 +736,16 @@ impl Image {
     ///
     /// * `array` - Source images
     pub fn array_source(array: Vec<Arc<Image>>) -> ImageBuilder {
-        if array.is_empty() {
-            panic!("images array must not be empty");
-        }
+        debug_assert!(array.is_empty(), "images array must not be empty");
 
         let width = array[0].width();
         let height = array[0].height();
 
-        for image in &array {
-            if width != image.width() || height != image.height() {
-                panic!("images are not equally sized");
+        if cfg!(debug_assertions) {
+            for image in &array {
+                if width != image.width() || height != image.height() {
+                    panic!("images are not equally sized");
+                }
             }
         }
 
