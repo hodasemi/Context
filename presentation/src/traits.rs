@@ -47,6 +47,7 @@ pub trait RenderCore: std::fmt::Debug {
         &self,
         post_process: &Arc<dyn PostProcess>,
     ) -> VerboseResult<()>;
+    fn clear_post_processing_routines(&self) -> VerboseResult<()>;
 
     // getter
     fn image_count(&self) -> usize;

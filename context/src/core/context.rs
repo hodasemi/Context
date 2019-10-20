@@ -142,6 +142,7 @@ impl Context {
 
         self.set_game_object(None)?;
         self.render_core.clear_scenes()?;
+        self.render_core.clear_post_processing_routines()?;
 
         Ok(())
     }

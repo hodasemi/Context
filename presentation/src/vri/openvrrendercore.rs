@@ -283,6 +283,10 @@ impl RenderCore for OpenVRRenderCore {
             .remove_post_processing_routine(post_process)
     }
 
+    fn clear_post_processing_routines(&self) -> VerboseResult<()> {
+        self.render_backend.clear_post_processing_routines()
+    }
+
     // getter
     fn image_count(&self) -> usize {
         self.render_backend.image_count()

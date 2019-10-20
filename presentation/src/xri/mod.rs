@@ -108,6 +108,10 @@ pub mod openxrrendercore {
             unimplemented!()
         }
 
+        fn clear_post_processing_routines(&self) -> VerboseResult<()> {
+            unimplemented!()
+        }
+
         // getter
         fn image_count(&self) -> usize {
             unimplemented!()

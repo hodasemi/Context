@@ -291,6 +291,12 @@ impl RenderBackend {
         Ok(())
     }
 
+    pub fn clear_post_processing_routines(&self) -> VerboseResult<()> {
+        self.post_processes.try_borrow_mut()?.clear();
+
+        Ok(())
+    }
+
     // getter
     pub fn image_count(&self) -> usize {
         self.image_count.get()
