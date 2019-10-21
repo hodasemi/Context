@@ -509,7 +509,7 @@ impl Instance {
 
 impl fmt::Debug for Instance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Instance (VkInstance: {:?})", self.instance)
+        write!(f, "Instance (VkInstance: {:#?})", self.instance)
     }
 }
 
