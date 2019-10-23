@@ -27,4 +27,16 @@ impl<'a> WindowConfig<'a> {
     pub fn set_opacity(&self, opacity: f32) -> VerboseResult<()> {
         self.wsi.set_opacity(opacity)
     }
+
+    pub fn show_simple_info_box(&self, title: &str, message: &str) -> VerboseResult<()> {
+        self.wsi.show_simple_info_box(title, message)
+    }
+
+    pub fn show_simple_warning_box(&self, title: &str, message: &str) -> VerboseResult<()> {
+        self.wsi.show_simple_warning_box(title, message)
+    }
+
+    pub fn show_simple_error_box(&self, title: &str, message: &str) -> VerboseResult<()> {
+        self.wsi.show_simple_error_box(title, message)
+    }
 }

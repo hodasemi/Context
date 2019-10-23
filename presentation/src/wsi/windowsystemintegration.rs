@@ -2,6 +2,7 @@
 #![allow(improper_ctypes)]
 
 use sdl2;
+use sdl2::messagebox::{show_simple_message_box, MessageBoxFlag, ShowMessageError};
 use sdl2::mouse::Cursor;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::surface::Surface as SDL_Surface;
@@ -16,6 +17,7 @@ use vulkan_rs::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::error::Error;
 use std::mem::MaybeUninit;
+use std::ops::Deref;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -249,6 +251,47 @@ impl WindowSystemIntegration {
 
             // update window values
             self.pre_fullscreen_rect.update_to_window(&mut window)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn show_simple_info_box(&self, title: &str, message: &str) -> VerboseResult<()> {
+        self.show_simple_message_box(MessageBoxFlag::INFORMATION, title, message)
+    }
+
+    pub fn show_simple_warning_box(&self, title: &str, message: &str) -> VerboseResult<()> {
+        self.show_simple_message_box(MessageBoxFlag::WARNING, title, message)
+    }
+
+    pub fn show_simple_error_box(&self, title: &str, message: &str) -> VerboseResult<()> {
+        self.show_simple_message_box(MessageBoxFlag::ERROR, title, message)
+    }
+
+    #[inline]
+    fn show_simple_message_box(
+        &self,
+        flags: MessageBoxFlag,
+        title: &str,
+        message: &str,
+    ) -> VerboseResult<()> {
+        let window = self.window.try_borrow()?;
+
+        if let Err(err) = show_simple_message_box(flags, title, message, Some(window.deref())) {
+            match err {
+                ShowMessageError::InvalidButton(_, _) => {
+                    create_error!("message box has a invalid button")
+                }
+                ShowMessageError::InvalidMessage(_) => {
+                    create_error!("message box has a invalid message")
+                }
+                ShowMessageError::InvalidTitle(_) => {
+                    create_error!("message box has a invalid title")
+                }
+                ShowMessageError::SdlError(err_str) => {
+                    create_error!(format!("sdl error while creating message box: {}", err_str))
+                }
+            }
         }
 
         Ok(())
