@@ -45,7 +45,7 @@ impl fmt::Debug for VkPhysicalDeviceProperties {
 
         write!(
             f,
-            "VkPhysicalDeviceProperties {{ apiVersion: {}, driverVersion: {}, vendorID: {}, deviceID: {}, deviceType: {:?}, deviceName: {}, pipelineCacheUUID: {:?}, limits: {:?}, sparseProperties: {:?} }}",
+            "VkPhysicalDeviceProperties {{ apiVersion: {:?}, driverVersion: {:?}, vendorID: {:?}, deviceID: {:?}, deviceType: {:?}, deviceName: {:?}, pipelineCacheUUID: {:?}, limits: {:?}, sparseProperties: {:?} }}",
             self.apiVersion, self.driverVersion, self.vendorID, self.deviceID, self.deviceType, device_name, self.pipelineCacheUUID, self.limits, self.sparseProperties
         )
     }

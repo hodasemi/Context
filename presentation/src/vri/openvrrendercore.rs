@@ -126,6 +126,7 @@ impl OpenVRRenderCore {
             instance: unsafe { transmute(image.device().physical_device().instance().vk_handle()) },
             queue: unsafe { transmute(queue_lock.vk_handle()) },
             queue_family_index: queue_lock.family_index(),
+
             width: image.width(),
             height: image.height(),
             format: image.vk_format() as u32,
@@ -134,13 +135,14 @@ impl OpenVRRenderCore {
 
         let texture = Texture {
             handle: Handle::Vulkan(vulkan_texture),
-            color_space: ColorSpace::Linear,
+            color_space: ColorSpace::Auto,
         };
 
-        // p_try!(unsafe { self.compositor.submit(eye, &texture, None, None) });
-
         if let Err(err) = unsafe { self.compositor.submit(eye, &texture, None, None) } {
-            println!("{:?}", err);
+            create_error!(format!(
+                "image ({:#?}) failed submission for {:?} eye with error {:?}",
+                image, eye, err
+            ));
         }
 
         Ok(())

@@ -247,7 +247,7 @@ impl fmt::Debug for Device {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Device {{ device: {:?}, physical_device: {:?} }}",
+            "Device {{ device: {:#?}, physical_device: {:#?} }}",
             self.device, self.physical_device
         )
     }
