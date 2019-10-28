@@ -212,7 +212,7 @@ impl RenderTarget {
         command_buffer: &Arc<CommandBuffer>,
         subpass_content: VkSubpassContents,
         framebuffer_index: usize,
-    ) -> VerboseResult<()> {
+    ) {
         let renderpass_begin = VkRenderPassBeginInfo::new(
             self.render_pass.vk_handle(),
             self.framebuffers[framebuffer_index].vk_handle(),
@@ -224,14 +224,10 @@ impl RenderTarget {
         );
 
         command_buffer.begin_render_pass(renderpass_begin, subpass_content);
-
-        Ok(())
     }
 
-    pub fn end(&self, command_buffer: &Arc<CommandBuffer>) -> VerboseResult<()> {
+    pub fn end(&self, command_buffer: &Arc<CommandBuffer>) {
         command_buffer.end_render_pass();
-
-        Ok(())
     }
 }
 
