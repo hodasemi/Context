@@ -47,11 +47,6 @@ impl Colorable {
 
         Self::add(&colorable)?;
 
-        let colorable_clone = colorable.clone();
-        frameable.add_callback(Box::new(move || {
-            check_and_return!(colorable_clone.update_frame());
-        }))?;
-
         Ok(colorable)
     }
 
@@ -61,6 +56,13 @@ impl Colorable {
     ///
     /// * `colorable` is a `&Arc<Colorable>` instance that is going to be added
     pub fn add(colorable: &Arc<Colorable>) -> VerboseResult<()> {
+        let colorable_clone = colorable.clone();
+
+        colorable.frameable.add_callback(
+            "colorable",
+            Box::new(move || colorable_clone.update_frame()),
+        )?;
+
         colorable.gui_handler.add_colorable(colorable)?;
         Ok(())
     }
@@ -71,6 +73,8 @@ impl Colorable {
     ///
     /// * `colorable` is a `&Arc<Colorable>` instance that is going to be deleted
     pub fn delete(colorable: &Arc<Colorable>) -> VerboseResult<()> {
+        colorable.frameable.remove_callback("colorable")?;
+
         colorable.gui_handler.delete_colorable(colorable)?;
         Ok(())
     }

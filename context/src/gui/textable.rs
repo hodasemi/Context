@@ -84,11 +84,6 @@ impl Textable {
 
         Self::add(&textable)?;
 
-        let textable_clone = textable.clone();
-        frameable.add_callback(Box::new(move || {
-            check_and_return!(textable_clone.update_text());
-        }))?;
-
         Ok(textable)
     }
 
@@ -111,6 +106,12 @@ impl Textable {
     ///
     /// * `textable` is a `&Arc<Textable>` instance that is going to be added
     pub fn add(textable: &Arc<Textable>) -> VerboseResult<()> {
+        let textable_clone = textable.clone();
+
+        textable
+            .frameable
+            .add_callback("textable", Box::new(move || textable_clone.update_text()))?;
+
         textable.gui_handler.add_textable(textable)?;
         Ok(())
     }
@@ -121,6 +122,8 @@ impl Textable {
     ///
     /// * `textable` is a `&Arc<Textable>` instance that is going to be deleted
     pub fn delete(textable: &Arc<Textable>) -> VerboseResult<()> {
+        textable.frameable.remove_callback("textable")?;
+
         textable.gui_handler.delete_textable(textable)?;
         Ok(())
     }

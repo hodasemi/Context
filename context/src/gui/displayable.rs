@@ -49,11 +49,6 @@ impl Displayable {
 
         Self::add(&displayable)?;
 
-        let displayable_clone = displayable.clone();
-        frameable.add_callback(Box::new(move || {
-            check_and_return!(displayable_clone.update_frame());
-        }))?;
-
         Ok(displayable)
     }
 
@@ -63,6 +58,13 @@ impl Displayable {
     ///
     /// * `displayable` is a `&Arc<Displayable>` instance that is going to be added
     pub fn add(displayable: &Arc<Displayable>) -> VerboseResult<()> {
+        let displayable_clone = displayable.clone();
+
+        displayable.frameable.add_callback(
+            "displayable",
+            Box::new(move || displayable_clone.update_frame()),
+        )?;
+
         displayable.gui_handler.add_displayable(displayable)?;
         Ok(())
     }
@@ -73,6 +75,8 @@ impl Displayable {
     ///
     /// * `displayable` is a `&Arc<Displayable>` instance that is going to be deleted
     pub fn delete(displayable: &Arc<Displayable>) -> VerboseResult<()> {
+        displayable.frameable.remove_callback("displayable")?;
+
         displayable.gui_handler.delete_displayable(displayable)?;
         Ok(())
     }
