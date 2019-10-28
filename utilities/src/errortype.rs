@@ -25,12 +25,7 @@ impl Fail for UtilError {
 
 impl Display for UtilError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let backtrace = match self.backtrace() {
-            Some(backtrace) => format!("{}", backtrace),
-            None => String::new(),
-        };
-
-        write!(f, "{}\n{:?}", backtrace, self.inner)
+        write!(f, "{}", self.inner)
     }
 }
 
