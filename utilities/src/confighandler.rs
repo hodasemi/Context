@@ -10,6 +10,12 @@ use std::str::FromStr;
 
 use std::collections::HashMap;
 
+pub trait ValueInto<T> {
+    type Error;
+
+    fn convert(&self) -> Result<T, Self::Error>;
+}
+
 /// Value abstraction to convert to and from values
 #[derive(Clone, Debug)]
 pub enum Value {
@@ -33,91 +39,7 @@ impl Value {
         Value::Array(Vec::new())
     }
 
-    /// Creates a value `Value::Value(String)`, internal conversion to string
-    ///
-    /// # Arguments
-    ///
-    /// `value` type has to implement `Display` trait
-    pub fn value<T>(value: &T) -> Value
-    where
-        T: Display,
-    {
-        Value::Value(format!("{}", value))
-    }
-
-    /// Create a value `Value::Array(Vec<String>)`, internal conversion to string
-    ///
-    /// # Arguments
-    ///
-    /// `array` array of type, type has to implement `Display` trait
-    pub fn array<T>(array: &[T]) -> Value
-    where
-        T: Display,
-    {
-        Value::Array(array.iter().map(|v| format!("{}", v)).collect())
-    }
-
-    /// Converts the internal value to the given type
-    ///
-    /// # Arguments
-    ///
-    /// `value` the variable that is going to be set, has to implement `FromStr` trait
-    pub fn set_value<T>(&self, value: &mut T) -> VerboseResult<()>
-    where
-        T: FromStr,
-    {
-        match self {
-            Value::Value(value_string) => match value_string.parse::<T>() {
-                Ok(val) => *value = val,
-                Err(_) => create_error!(format!("error parsing value {}", value_string)),
-            },
-            _ => create_error!("key_value has wrong format".to_string()),
-        };
-
-        Ok(())
-    }
-
-    pub fn apply_value<T>(&self) -> VerboseResult<T>
-    where
-        T: FromStr,
-    {
-        match self {
-            Value::Value(value_string) => match value_string.parse::<T>() {
-                Ok(val) => Ok(val),
-                Err(_) => create_error!(format!("error parsing value {}", value_string)),
-            },
-            _ => create_error!("key_value has wrong format".to_string()),
-        }
-    }
-
-    /// Converts the internal array to the given type array
-    ///
-    /// # Arguments
-    ///
-    /// `array` the variable that is going to be set, has to implement `FromStr` trait
-    pub fn set_array<T>(&self, array: &mut Vec<T>) -> VerboseResult<()>
-    where
-        T: FromStr,
-    {
-        match self {
-            Value::Array(value_array) => {
-                for value_string in value_array {
-                    match value_string.parse::<T>() {
-                        Ok(val) => array.push(val),
-                        Err(_) => create_error!(format!("error parsing array {}", value_string)),
-                    }
-                }
-            }
-            _ => create_error!("key_value has wrong format".to_string()),
-        };
-
-        Ok(())
-    }
-
-    pub fn apply_array<T>(&self) -> VerboseResult<Vec<T>>
-    where
-        T: FromStr,
-    {
+    pub fn convert<T: FromStr>(&self) -> VerboseResult<Vec<T>> {
         match self {
             Value::Array(value_array) => {
                 let mut target_array = Vec::with_capacity(value_array.len());
@@ -131,7 +53,53 @@ impl Value {
 
                 Ok(target_array)
             }
-            _ => create_error!("key_value has wrong format".to_string()),
+            _ => create_error!("key_value has wrong format"),
+        }
+    }
+}
+
+/// Creates a value `Value::Value(String)`, internal conversion to string
+///
+/// # Arguments
+///
+/// `value` type has to implement `Display` trait
+impl<T> From<&T> for Value
+where
+    T: Display,
+{
+    fn from(value: &T) -> Self {
+        Value::Value(format!("{}", value))
+    }
+}
+
+/// Create a value `Value::Array(Vec<String>)`, internal conversion to string
+///
+/// # Arguments
+///
+/// `array` array of type, type has to implement `Display` trait
+impl<T> From<&[T]> for Value
+where
+    T: Display,
+{
+    fn from(array: &[T]) -> Self {
+        Value::Array(array.iter().map(|v| format!("{}", v)).collect())
+    }
+}
+
+/// Converts the internal value to the given type
+impl<T> ValueInto<T> for Value
+where
+    T: FromStr,
+{
+    type Error = UtilError;
+
+    fn convert(&self) -> Result<T, Self::Error> {
+        match self {
+            Value::Value(value_string) => match value_string.parse::<T>() {
+                Ok(val) => Ok(val),
+                Err(_) => create_error!(format!("error parsing value {}", value_string)),
+            },
+            _ => create_error!("key_value has wrong format"),
         }
     }
 }
