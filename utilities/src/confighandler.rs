@@ -33,7 +33,25 @@ impl Value {
         Value::Array(Vec::new())
     }
 
-    pub fn convert_array<T: FromStr>(&self) -> VerboseResult<Vec<T>> {
+    /// Create a value `Value::Array(Vec<String>)`, internal conversion to string
+    ///
+    /// # Arguments
+    ///
+    /// `array` array of type, type has to implement `Display` trait
+    pub fn from_array<T: Display>(array: &[T]) -> Self {
+        Value::Array(array.iter().map(|v| format!("{}", v)).collect())
+    }
+
+    /// Creates a value `Value::Value(String)`, internal conversion to string
+    ///
+    /// # Arguments
+    ///
+    /// `value` type has to implement `Display` trait
+    pub fn from_value<T: Display>(value: &T) -> Self {
+        Value::Value(format!("{}", value))
+    }
+
+    pub fn to_array<T: FromStr>(&self) -> VerboseResult<Vec<T>> {
         match self {
             Value::Array(value_array) => {
                 let mut target_array = Vec::with_capacity(value_array.len());
@@ -51,7 +69,7 @@ impl Value {
         }
     }
 
-    pub fn convert_value<T: FromStr>(&self) -> VerboseResult<T> {
+    pub fn to_value<T: FromStr>(&self) -> VerboseResult<T> {
         match self {
             Value::Value(value_string) => match value_string.parse::<T>() {
                 Ok(val) => Ok(val),
@@ -59,34 +77,6 @@ impl Value {
             },
             _ => create_error!("key_value has wrong format"),
         }
-    }
-}
-
-/// Creates a value `Value::Value(String)`, internal conversion to string
-///
-/// # Arguments
-///
-/// `value` type has to implement `Display` trait
-impl<T> From<&T> for Value
-where
-    T: Display,
-{
-    fn from(value: &T) -> Self {
-        Value::Value(format!("{}", value))
-    }
-}
-
-/// Create a value `Value::Array(Vec<String>)`, internal conversion to string
-///
-/// # Arguments
-///
-/// `array` array of type, type has to implement `Display` trait
-impl<T> From<&[T]> for Value
-where
-    T: Display,
-{
-    fn from(array: &[T]) -> Self {
-        Value::Array(array.iter().map(|v| format!("{}", v)).collect())
     }
 }
 
