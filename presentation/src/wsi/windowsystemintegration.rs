@@ -97,7 +97,7 @@ pub struct WindowSystemIntegration {
     cursor: RefCell<Option<Cursor>>,
 
     displays: Vec<Display>,
-    enabled_display_index: usize,
+    _enabled_display_index: usize,
 
     pre_fullscreen_rect: CellRect,
 
@@ -216,7 +216,7 @@ impl WindowSystemIntegration {
 
             displays,
 
-            enabled_display_index: display_index,
+            _enabled_display_index: display_index,
 
             pre_fullscreen_rect: rect,
 
@@ -240,8 +240,8 @@ impl WindowSystemIntegration {
             self.pre_fullscreen_rect.update_from_window(&window);
 
             // set fullscreen size to fit display
-            let display = &self.displays[self.enabled_display_index];
-            set_window_size(&mut window, display.w, display.h)?;
+            // let display = &self.displays[self.enabled_display_index];
+            // set_window_size(&mut window, display.w, display.h)?;
 
             // change fullscreen mode
             window.set_fullscreen(FullscreenType::True)?;
