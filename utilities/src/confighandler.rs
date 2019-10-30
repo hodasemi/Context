@@ -175,7 +175,7 @@ impl ConfigHandler {
     /// `sections` the sections and keys that are going to be written
     pub fn write_config(
         file_name: &str,
-        sections: &[(String, Vec<(String, Value)>)],
+        sections: &[(&str, &[(&str, Value)])],
     ) -> VerboseResult<()> {
         let mut file = match File::create(file_name) {
             Ok(file) => file,
@@ -192,7 +192,7 @@ impl ConfigHandler {
                 create_error!(format!("failed writing section: {}", fmt_header));
             }
 
-            for (key, value) in body {
+            for (key, value) in body.iter() {
                 let fmt_key_value = format!(
                     "{} = {}\n",
                     key,
