@@ -175,7 +175,7 @@ impl ConfigHandler {
     /// `sections` the sections and keys that are going to be written
     pub fn write_config(
         file_name: &str,
-        sections: &[(&str, &[(&str, Value)])],
+        sections: &[(&str, Vec<(&str, Value)>)],
     ) -> VerboseResult<()> {
         let mut file = match File::create(file_name) {
             Ok(file) => file,
