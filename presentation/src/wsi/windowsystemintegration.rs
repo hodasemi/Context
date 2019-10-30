@@ -240,8 +240,8 @@ impl WindowSystemIntegration {
             self.pre_fullscreen_rect.update_from_window(&window);
 
             // set fullscreen size to fit display
-            // let display = &self.displays[self.enabled_display_index];
-            // set_window_size(&mut window, display.w, display.h)?;
+            let display = &self.displays[window.display_index()? as usize];
+            set_window_size(&mut window, display.w, display.h)?;
 
             // change fullscreen mode
             window.set_fullscreen(FullscreenType::True)?;
