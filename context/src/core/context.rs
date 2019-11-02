@@ -400,7 +400,14 @@ impl ContextBuilder {
             .event_system()
             .set_callback(move |event| {
                 if let Some(context) = weak_context.upgrade() {
+                    // TODO: remove stupid workaround
+                    let mut ctx_obj = None;
+
                     if let Some(context_object) = context.context_object.try_borrow()?.as_ref() {
+                        ctx_obj = Some(context_object.clone());
+                    }
+
+                    if let Some(context_object) = ctx_obj {
                         context_object.event(event)?;
                     }
                 }
