@@ -9,7 +9,7 @@ pub use crate::renderbackend::{Eye, TargetMode, VRTransformations};
 // input
 pub use crate::input::{
     controller::Controller, controlleraxis::ControllerAxis, guidirection::GuiDirection,
-    inputmap::InputMap, mousebutton::MouseButton,
+    mousebutton::MouseButton,
 };
 
 // wsi
