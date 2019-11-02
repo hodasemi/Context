@@ -17,7 +17,6 @@ cgmath = "*"
 libloading = "*"
 
 [features]
-user_interface = []
 audio = ["ears"]
 openxr = ["presentation/OpenXR"]
 openvr = ["presentation/OpenVR"]
