@@ -1,8 +1,6 @@
 // structures
 pub use crate::core::{
-    configs::WindowConfig,
-    context::{Context, ContextObject},
-    osspecific::osspecific::OsSpecificConfig,
+    configs::WindowConfig, context::Context, osspecific::osspecific::OsSpecificConfig,
 };
 
 #[cfg(feature = "audio")]
