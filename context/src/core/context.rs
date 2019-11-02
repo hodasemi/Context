@@ -42,7 +42,7 @@ pub struct Context {
     exit_call: Cell<bool>,
 
     // gui
-    game_object: RefCell<Option<Arc<dyn ContextObject>>>,
+    context_object: RefCell<Option<Arc<dyn ContextObject>>>,
 
     fallback: RefCell<Option<Box<dyn Fn(&str) -> VerboseResult<()>>>>,
 }
@@ -52,11 +52,11 @@ impl Context {
         ContextBuilder::default()
     }
 
-    pub fn set_game_object(
+    pub fn set_context_object(
         &self,
-        game_object: Option<Arc<dyn ContextObject>>,
+        context_object: Option<Arc<dyn ContextObject>>,
     ) -> VerboseResult<()> {
-        *self.game_object.try_borrow_mut()? = game_object;
+        *self.context_object.try_borrow_mut()? = context_object;
 
         Ok(())
     }
@@ -110,7 +110,7 @@ impl Context {
             }
         }
 
-        self.set_game_object(None)?;
+        self.set_context_object(None)?;
         self.render_core.clear_scenes()?;
         self.render_core.clear_post_processing_routines()?;
 
@@ -170,8 +170,8 @@ impl std::fmt::Debug for Context {
 impl Context {
     #[inline]
     fn update(&self) -> VerboseResult<()> {
-        if let Some(game_object) = self.game_object.try_borrow()?.as_ref() {
-            if let Err(err) = game_object.update() {
+        if let Some(context_object) = self.context_object.try_borrow()?.as_ref() {
+            if let Err(err) = context_object.update() {
                 return Err(err);
             }
         }
@@ -388,10 +388,25 @@ impl ContextBuilder {
             time: Cell::new(0.0),
             exit_call: Cell::new(false),
 
-            game_object: RefCell::new(None),
+            context_object: RefCell::new(None),
 
             fallback: RefCell::new(None),
         });
+
+        let weak_context = Arc::downgrade(&context);
+
+        context
+            .presentation
+            .event_system()
+            .set_callback(move |event| {
+                if let Some(context) = weak_context.upgrade() {
+                    if let Some(context_object) = context.context_object.try_borrow()?.as_ref() {
+                        context_object.event(event)?;
+                    }
+                }
+
+                Ok(())
+            });
 
         if self.enable_mouse {
             context.presentation.event_system().enable_mouse()?;
