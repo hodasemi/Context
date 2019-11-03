@@ -57,22 +57,9 @@ impl VulkanWindowRenderCore {
             1,
         )?;
 
-        let mut swapchain_images = Vec::new();
         let (format, _) = surface.format_colorspace(&device)?;
 
-        for image in swapchain.vk_images()? {
-            swapchain_images.push(
-                Image::from_preinitialized(
-                    image,
-                    format,
-                    swapchain.width(),
-                    swapchain.height(),
-                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                )
-                .nearest_sampler()
-                .build(device, queue)?,
-            );
-        }
+        let swapchain_images = Self::create_swapchain_images(&swapchain, device, queue, format)?;
 
         let render_sem = Semaphore::new(device.clone())?;
         let image_sem = Semaphore::new(device.clone())?;
@@ -124,21 +111,12 @@ impl VulkanWindowRenderCore {
             .surface
             .format_colorspace(&self.render_backend.device())?;
 
-        let mut swapchain_images = Vec::new();
-
-        for image in self.swapchain.vk_images()? {
-            swapchain_images.push(
-                Image::from_preinitialized(
-                    image,
-                    format,
-                    self.swapchain.width(),
-                    self.swapchain.height(),
-                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                )
-                .nearest_sampler()
-                .build(self.render_backend.device(), self.render_backend.queue())?,
-            );
-        }
+        let swapchain_images = Self::create_swapchain_images(
+            &self.swapchain,
+            self.render_backend.device(),
+            self.render_backend.queue(),
+            format,
+        )?;
 
         self.render_backend.resize(
             TargetMode::Single(swapchain_images),
@@ -147,6 +125,31 @@ impl VulkanWindowRenderCore {
         )?;
 
         Ok(())
+    }
+
+    fn create_swapchain_images(
+        swapchain: &Arc<Swapchain>,
+        device: &Arc<Device>,
+        queue: &Arc<Mutex<Queue>>,
+        format: VkFormat,
+    ) -> VerboseResult<Vec<Arc<Image>>> {
+        let mut swapchain_images = Vec::new();
+
+        for image in swapchain.vk_images()? {
+            swapchain_images.push(
+                Image::from_preinitialized(
+                    image,
+                    format,
+                    swapchain.width(),
+                    swapchain.height(),
+                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                )
+                .nearest_sampler()
+                .build(device, queue)?,
+            );
+        }
+
+        Ok(swapchain_images)
     }
 }
 
