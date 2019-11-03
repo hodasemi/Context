@@ -171,20 +171,20 @@ impl RenderCore for VulkanWindowRenderCore {
             .add_command_buffer(&command_buffer)
             .add_signal_semaphore(&self.render_finished_sem)];
 
-        {
+        if let OutOfDate::OutOfDate = {
             let queue_lock = self.render_backend.queue().lock()?;
 
             queue_lock.submit(Some(&self.render_fence), submits)?;
 
-            if let OutOfDate::OutOfDate = queue_lock.present(
+            queue_lock.present(
                 &[&self.swapchain],
                 &[self.current_image_index.get() as u32],
                 &[&self.render_finished_sem],
-            )? {
-                self.resize()?;
-                self.render_fence.reset();
-                return Ok(true);
-            }
+            )?
+        } {
+            self.resize()?;
+            self.render_fence.reset();
+            return Ok(true);
         }
 
         // make sure command_buffer is ready
