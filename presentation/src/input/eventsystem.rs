@@ -15,6 +15,7 @@ use std::rc::Rc;
 use super::controller::Controller;
 use super::mousebutton::MouseButton;
 
+#[derive(Debug)]
 pub enum PresentationEventType {
     // mouse events
     MouseMotion(u32, u32),

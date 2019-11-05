@@ -149,3 +149,13 @@ impl Controller {
         self.last_direction
     }
 }
+
+impl std::fmt::Debug for Controller {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Point {{ name: {}, deadzone: {}, id: {} }}",
+            self.name, self.deadzone, self.id
+        )
+    }
+}
