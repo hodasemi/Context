@@ -16,3 +16,6 @@ pub use crate::input::{
 pub use crate::wsi::windowsystemintegration::WindowCreateInfo;
 
 pub use sdl2::{controller::Button as ControllerButton, keyboard::Keycode};
+
+pub use utilities::prelude::*;
+pub use vulkan_rs::prelude::*;

@@ -29,4 +29,5 @@ pub use super::{OutOfDate, VkHandle};
 
 pub use super::mappedmemory::VkMappedMemory;
 
+pub use image;
 pub use vulkan_sys::prelude::*;

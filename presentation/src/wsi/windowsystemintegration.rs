@@ -162,12 +162,12 @@ impl WindowSystemIntegration {
                 Some(index) => display_index = index,
                 None => {
                     println!("could not find display: {}", requested_display);
-                    println!("defaulting to display 0 ({})", displays[0].name);
+                    println!("defaulting to display 0 ({})", displays[display_index].name);
                 }
             },
             None => println!(
                 "no display requested, defaulting to display 0 ({})",
-                displays[0].name
+                displays[display_index].name
             ),
         }
 

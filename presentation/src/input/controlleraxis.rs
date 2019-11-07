@@ -1,4 +1,5 @@
 use cgmath::{Vector2, Zero};
+use utilities::prelude::*;
 
 #[derive(Copy, Clone, Debug)]
 pub struct ControllerAxis {

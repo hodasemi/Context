@@ -10,10 +10,6 @@ pub use crate::core::soundhandler::{Music, Sound, SoundHandler, VolumeInfo};
 #[cfg(feature = "audio")]
 pub use ears::{ReverbEffect, ReverbPreset};
 
-// crate rexports
-pub use utilities::prelude::*;
-pub use vulkan_rs::prelude::*;
-
 // render target
 pub use crate::utils::rendertarget::{ClearValue, CustomTarget, RenderTarget};
 

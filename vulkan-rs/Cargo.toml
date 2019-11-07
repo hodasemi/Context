@@ -5,7 +5,7 @@ authors = ["hodasemi <superschneider@t-online.de>"]
 edition = "2018"
 
 [dependencies]
-shared_library = "*"
-image = "*"
+shared_library = "0.1.9"
+image = "0.22.3"
 utilities = { path = "../utilities" }
 vulkan-sys = { path = "../vulkan-sys" }
