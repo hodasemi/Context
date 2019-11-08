@@ -39,14 +39,15 @@ extern "C" {
 }
 
 #[derive(Default, Debug)]
-pub struct WindowCreateInfo {
-    pub title: String,
+pub struct WindowCreateInfo<'a> {
+    pub title: &'a str,
     pub width: u32,
     pub height: u32,
     pub fullscreen: bool,
-    pub requested_display: Option<String>,
+    pub requested_display: Option<&'a str>,
 }
 
+#[derive(Debug)]
 pub struct Display {
     pub name: String,
 
@@ -59,7 +60,7 @@ pub struct Display {
     pub dpi: [f32; 3],
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct CellRect {
     x: Cell<i32>,
     y: Cell<i32>,
@@ -105,8 +106,8 @@ pub struct WindowSystemIntegration {
 }
 
 impl WindowSystemIntegration {
-    pub(crate) fn new(
-        create_info: &WindowCreateInfo,
+    pub(crate) fn new<'a>(
+        create_info: &WindowCreateInfo<'a>,
         context: &Sdl,
     ) -> VerboseResult<WindowSystemIntegration> {
         // create video subsystem
@@ -152,63 +153,51 @@ impl WindowSystemIntegration {
         }
 
         // check if there is an preferred display
-        let mut display_index = 0;
+        let mut display_index = None;
 
-        match &create_info.requested_display {
-            Some(requested_display) => match displays
+        if let Some(requested_display) = &create_info.requested_display {
+            match displays
                 .iter()
                 .position(|display| display.name == *requested_display)
             {
-                Some(index) => display_index = index,
+                Some(index) => display_index = Some(index),
                 None => {
                     println!("could not find display: {}", requested_display);
-                    println!("defaulting to display 0 ({})", displays[display_index].name);
+                    println!("defaulting to display 0 ({})", displays[0].name);
                 }
-            },
-            None => println!(
-                "no display requested, defaulting to display 0 ({})",
-                displays[display_index].name
-            ),
+            }
         }
 
-        // create window
-        let mut window = if create_info.fullscreen {
-            let display = &displays[display_index];
+        // build window
+        let mut window_builder =
+            video_subsystem.window(&create_info.title, create_info.width, create_info.height);
+        window_builder.resizable().vulkan();
 
-            let window = match video_subsystem
-                .window(&create_info.title, display.w, display.h)
-                .fullscreen()
-                .resizable()
-                .vulkan()
-                .build()
-            {
-                Ok(window) => window,
-                Err(build_error) => create_error!(build_error.description().to_string()),
-            };
+        match display_index {
+            Some(index) => {
+                let display = &displays[index];
 
-            window
-        } else {
-            let window = match video_subsystem
-                .window(&create_info.title, create_info.width, create_info.height)
-                .position_centered()
-                .resizable()
-                .vulkan()
-                .build()
-            {
-                Ok(window) => window,
-                Err(build_error) => create_error!(build_error.description().to_string()),
-            };
+                window_builder.position(
+                    display.x + display.w as i32 / 2,
+                    display.y + display.h as i32 / 2,
+                );
+            }
+            None => {
+                window_builder.position_centered();
+            }
+        }
 
-            window
+        let window = match window_builder.build() {
+            Ok(window) => window,
+            Err(build_error) => create_error!(build_error.description().to_string()),
         };
 
-        // force window borders
-        window.set_bordered(true);
+        display_index = Some(window.display_index()? as usize);
 
         let rect = CellRect::default();
         rect.update_from_window(&window);
 
-        Ok(WindowSystemIntegration {
+        let wsi = WindowSystemIntegration {
             _video_subsystem: video_subsystem,
             window: RefCell::new(window),
 
@@ -216,12 +205,18 @@ impl WindowSystemIntegration {
 
             displays,
 
-            _enabled_display_index: display_index,
+            _enabled_display_index: display_index.expect("display index not set"),
 
             pre_fullscreen_rect: rect,
 
             surface: RefCell::new(None),
-        })
+        };
+
+        if create_info.fullscreen {
+            wsi.set_fullscreen(true)?;
+        }
+
+        Ok(wsi)
     }
 
     pub fn is_fullscreen(&self) -> VerboseResult<bool> {
@@ -243,11 +238,16 @@ impl WindowSystemIntegration {
             let display = &self.displays[window.display_index()? as usize];
             set_window_size(&mut window, display.w, display.h)?;
 
+            window.set_bordered(false);
+
             // change fullscreen mode
             window.set_fullscreen(FullscreenType::True)?;
         } else {
             // change fullscreen mode
             window.set_fullscreen(FullscreenType::Off)?;
+
+            // force window borders
+            window.set_bordered(true);
 
             // update window values
             self.pre_fullscreen_rect.update_to_window(&mut window)?;
@@ -352,7 +352,7 @@ impl WindowSystemIntegration {
         Ok(())
     }
 
-    pub fn sdl2_window(&self) -> *mut SDL_Window {
+    fn sdl2_window(&self) -> *mut SDL_Window {
         self.window.borrow().raw()
     }
 

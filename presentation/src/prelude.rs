@@ -13,7 +13,7 @@ pub use crate::input::{
 };
 
 // wsi
-pub use crate::wsi::windowsystemintegration::WindowCreateInfo;
+pub use crate::wsi::windowsystemintegration::{Display, WindowCreateInfo};
 
 pub use sdl2::{controller::Button as ControllerButton, keyboard::Keycode};
 

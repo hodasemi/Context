@@ -39,4 +39,8 @@ impl<'a> WindowConfig<'a> {
     pub fn show_simple_error_box(&self, title: &str, message: &str) -> VerboseResult<()> {
         self.wsi.show_simple_error_box(title, message)
     }
+
+    pub fn displays(&self) -> &[Display] {
+        self.wsi.displays()
+    }
 }

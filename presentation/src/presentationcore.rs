@@ -83,9 +83,9 @@ impl PresentationCore {
         _modes
     }
 
-    pub fn new(
+    pub fn new<'a>(
         use_vr: Option<VRMode>,
-        window_create_info: &WindowCreateInfo,
+        window_create_info: &WindowCreateInfo<'a>,
         appl_info: ApplicationInfo,
     ) -> VerboseResult<PresentationCore> {
         // create sdl2 context
