@@ -333,10 +333,6 @@ impl GraphicsPipelineBuilder {
         render_pass: &Arc<RenderPass>,
         subpass: u32,
     ) -> VerboseResult<Arc<Pipeline>> {
-        if cfg!(debug_assertions) {
-            assert!(self.rasterization.is_some());
-        }
-
         let mut rasterization = self.rasterization.expect("rasterization state is required");
 
         if let Some(amd_rasterization_order) = &self.amd_rasterization_order {
@@ -422,7 +418,7 @@ impl GraphicsPipelineBuilder {
         Ok(Arc::new(Pipeline::new(
             device.clone(),
             pipeline_layout.clone(),
-            PipelineType::RayTracing,
+            PipelineType::Graphics,
             pipeline,
         )))
     }
