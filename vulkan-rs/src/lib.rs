@@ -22,6 +22,7 @@ pub mod physicaldevice;
 pub mod pipeline;
 pub mod pipelinecache;
 pub mod pipelinelayout;
+pub mod pipelines;
 pub mod querypool;
 pub mod queue;
 pub mod renderpass;
