@@ -48,7 +48,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new<'a>() -> ContextBuilder<'a> {
+    pub fn new<'a>() -> ContextBuilder {
         ContextBuilder::default()
     }
 
@@ -180,7 +180,7 @@ impl Context {
     }
 }
 
-pub struct ContextBuilder<'a> {
+pub struct ContextBuilder {
     #[cfg(feature = "audio")]
     volume_info: Option<VolumeInfo>,
 
@@ -194,7 +194,7 @@ pub struct ContextBuilder<'a> {
     app_info: ApplicationInfo,
 
     // window information
-    window_create_info: WindowCreateInfo<'a>,
+    window_create_info: WindowCreateInfo,
 
     // os specifics
     os_specific_config: OsSpecificConfig,
@@ -214,7 +214,7 @@ pub struct ContextBuilder<'a> {
     controller_deadzone: f32,
 }
 
-impl<'a> Default for ContextBuilder<'a> {
+impl<'a> Default for ContextBuilder {
     fn default() -> Self {
         ContextBuilder {
             #[cfg(feature = "audio")]
@@ -236,7 +236,7 @@ impl<'a> Default for ContextBuilder<'a> {
 
             // window information
             window_create_info: WindowCreateInfo {
-                title: "Vulkan Application",
+                title: "Vulkan Application".to_string(),
                 width: 800,
                 height: 600,
                 fullscreen: false,
@@ -263,7 +263,7 @@ impl<'a> Default for ContextBuilder<'a> {
     }
 }
 
-impl<'a> ContextBuilder<'a> {
+impl ContextBuilder {
     #[cfg(feature = "audio")]
     pub fn set_volume_info(mut self, volume_info: VolumeInfo) -> Self {
         self.volume_info = Some(volume_info);
@@ -291,7 +291,7 @@ impl<'a> ContextBuilder<'a> {
         self
     }
 
-    pub fn set_window_info(mut self, window_info: WindowCreateInfo<'a>) -> Self {
+    pub fn set_window_info(mut self, window_info: WindowCreateInfo) -> Self {
         self.window_create_info = window_info;
 
         self

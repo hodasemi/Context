@@ -39,12 +39,12 @@ extern "C" {
 }
 
 #[derive(Default, Debug)]
-pub struct WindowCreateInfo<'a> {
-    pub title: &'a str,
+pub struct WindowCreateInfo {
+    pub title: String,
     pub width: u32,
     pub height: u32,
     pub fullscreen: bool,
-    pub requested_display: Option<&'a str>,
+    pub requested_display: Option<String>,
 }
 
 #[derive(Debug)]
@@ -107,7 +107,7 @@ pub struct WindowSystemIntegration {
 
 impl WindowSystemIntegration {
     pub(crate) fn new<'a>(
-        create_info: &WindowCreateInfo<'a>,
+        create_info: &WindowCreateInfo,
         context: &Sdl,
     ) -> VerboseResult<WindowSystemIntegration> {
         // create video subsystem
