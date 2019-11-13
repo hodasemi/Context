@@ -137,7 +137,7 @@ impl<T: Copy> Buffer<T> {
 }
 
 impl<T> Buffer<T> {
-    pub fn new<'a>() -> BufferBuilder<'a, T> {
+    pub fn builder<'a>() -> BufferBuilder<'a, T> {
         BufferBuilder {
             flags: 0u32.into(),
             usage: 0u32.into(),

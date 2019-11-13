@@ -112,7 +112,7 @@ macro_rules! Extensions {
         }
 
         impl $struct_name {
-            pub fn to_list(self) -> Vec<VkString> {
+            pub fn into_list(self) -> Vec<VkString> {
                 let mut list = Vec::new();
 
                 $(
@@ -139,7 +139,7 @@ macro_rules! Extensions {
                 list
             }
 
-            pub fn from_list(list: &Vec<VkString>) -> Self {
+            pub fn from_list(list: &[VkString]) -> Self {
                 let mut extensions = Self::default();
 
                 $(

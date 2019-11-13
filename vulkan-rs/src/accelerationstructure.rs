@@ -115,7 +115,7 @@ impl AccelerationStructureBuilder {
         if cfg!(debug_assertions) {
             if self.bottom_level {
                 // in blas, instances must be zero
-                if self.instances.len() > 0 {
+                if !self.instances.is_empty() {
                     create_error!("Instances are not allowed inside of a bottom level as!");
                 }
 
@@ -124,7 +124,7 @@ impl AccelerationStructureBuilder {
                 }
             } else {
                 // in tlas, geometries must be zero
-                if self.geometries.len() > 0 {
+                if !self.geometries.is_empty() {
                     create_error!("Geometries are not allowed inside of a top level as!");
                 }
 
@@ -323,7 +323,7 @@ impl AccelerationStructure {
         device: &Arc<Device>,
         geometry_instances: &[VkGeometryInstanceNV],
     ) -> VerboseResult<Arc<Buffer<VkGeometryInstanceNV>>> {
-        Buffer::new()
+        Buffer::builder()
             .set_usage(VK_BUFFER_USAGE_RAY_TRACING_BIT_NV)
             .set_memory_properties(
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -361,7 +361,7 @@ impl AccelerationStructure {
         scratch_size_in_bytes: VkDeviceSize,
     ) -> VerboseResult<Arc<Buffer<u8>>> {
         // create scratch buffer
-        Buffer::new()
+        Buffer::builder()
             .set_usage(VK_BUFFER_USAGE_RAY_TRACING_BIT_NV)
             .set_memory_properties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
             .set_size(scratch_size_in_bytes)
@@ -383,7 +383,7 @@ impl AccelerationStructure {
         let result_size_in_bytes = memory_requirements.memoryRequirements.size;
 
         // create result buffer
-        let result_buffer = Buffer::new()
+        let result_buffer = Buffer::builder()
             .set_usage(VK_BUFFER_USAGE_RAY_TRACING_BIT_NV)
             .set_memory_properties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
             .set_size(result_size_in_bytes)

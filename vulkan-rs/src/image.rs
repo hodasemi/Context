@@ -619,7 +619,7 @@ impl ImageBuilder {
         data: &[u8],
         image: &Arc<Image>,
     ) -> VerboseResult<()> {
-        let staging_buffer = Buffer::new()
+        let staging_buffer = Buffer::builder()
             .set_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
             .set_memory_properties(
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -921,7 +921,7 @@ fn into_layout(image: &Image, layout: VkImageLayout) -> VerboseResult<()> {
     let queue_lock = image.queue.lock()?;
 
     // create a new command pool
-    let command_pool = CommandPool::new()
+    let command_pool = CommandPool::builder()
         .set_queue_family_index(queue_lock.family_index())
         .build(image.device.clone())?;
 
@@ -949,8 +949,8 @@ fn into_layout(image: &Image, layout: VkImageLayout) -> VerboseResult<()> {
     command_buffer.end()?;
 
     // submit current queue
-    let submit = SubmitInfo::new().add_command_buffer(&command_buffer);
-    let fence = Fence::new().build(image.device.clone())?;
+    let submit = SubmitInfo::default().add_command_buffer(&command_buffer);
+    let fence = Fence::builder().build(image.device.clone())?;
 
     queue_lock.submit(Some(&fence), &[submit])?;
 
@@ -973,7 +973,7 @@ where
     let queue_lock = queue.lock()?;
 
     // create a new command pool
-    let command_pool = CommandPool::new()
+    let command_pool = CommandPool::builder()
         .set_queue_family_index(queue_lock.family_index())
         .build(device.clone())?;
 
@@ -1051,8 +1051,8 @@ where
     command_buffer.end()?;
 
     // submit current queue
-    let submit = SubmitInfo::new().add_command_buffer(&command_buffer);
-    let fence = Fence::new().build(device.clone())?;
+    let submit = SubmitInfo::default().add_command_buffer(&command_buffer);
+    let fence = Fence::builder().build(device.clone())?;
 
     queue_lock.submit(Some(&fence), &[submit])?;
 
@@ -1070,7 +1070,7 @@ fn copy_images_to_imagearray(
     let queue_lock = queue.lock()?;
 
     // create a new command pool
-    let command_pool = CommandPool::new()
+    let command_pool = CommandPool::builder()
         .set_queue_family_index(queue_lock.family_index())
         .build(device.clone())?;
 
@@ -1130,8 +1130,8 @@ fn copy_images_to_imagearray(
     command_buffer.end()?;
 
     // submit current queue
-    let submit = SubmitInfo::new().add_command_buffer(&command_buffer);
-    let fence = Fence::new().build(device.clone())?;
+    let submit = SubmitInfo::default().add_command_buffer(&command_buffer);
+    let fence = Fence::builder().build(device.clone())?;
 
     queue_lock.submit(Some(&fence), &[submit])?;
 

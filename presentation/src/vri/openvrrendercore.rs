@@ -55,7 +55,7 @@ impl OpenVRRenderCore {
 
             render_backend,
 
-            render_fence: Fence::new().build(device.clone())?,
+            render_fence: Fence::builder().build(device.clone())?,
 
             format,
 
@@ -235,7 +235,7 @@ impl RenderCore for OpenVRRenderCore {
             .render_backend
             .render(self.current_image_indices.clone(), Some(transforms))?;
 
-        let submits = &[SubmitInfo::new().add_command_buffer(&command_buffer)];
+        let submits = &[SubmitInfo::default().add_command_buffer(&command_buffer)];
 
         {
             let queue_lock = self.render_backend.queue().lock()?;

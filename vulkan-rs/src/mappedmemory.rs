@@ -13,7 +13,7 @@ where
 }
 
 impl<'a, T: Copy> VkMappedMemory<'a, T> {
-    pub fn new(
+    pub(crate) fn new(
         device: &'a Device,
         memory: VkDeviceMemory,
         data: &'a mut [T],
@@ -35,10 +35,6 @@ impl<'a, T: Copy> VkMappedMemory<'a, T> {
 
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         self.data.iter_mut()
-    }
-
-    pub fn len(&self) -> usize {
-        self.data.len()
     }
 }
 

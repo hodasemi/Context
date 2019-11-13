@@ -120,7 +120,7 @@ impl DisplayTiming {
         );
 
         if result != VK_SUCCESS {
-            create_error!(format!("failed getting presentation timing count"));
+            create_error!("failed getting presentation timing count".to_string());
         }
 
         let mut presentation_timings = vec![
@@ -142,7 +142,7 @@ impl DisplayTiming {
         );
 
         if result != VK_SUCCESS {
-            create_error!(format!("failed getting presentation timings"));
+            create_error!("failed getting presentation timings".to_string());
         }
 
         Ok(presentation_timings)
@@ -158,7 +158,7 @@ impl DisplayTiming {
         );
 
         if result != VK_SUCCESS {
-            create_error!(format!("failed getting refresh cycle duration"));
+            create_error!("failed getting refresh cycle duration".to_string());
         }
 
         Ok(refresh_cycle.refreshDuration)

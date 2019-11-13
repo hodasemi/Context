@@ -63,7 +63,7 @@ impl VulkanWindowRenderCore {
 
         let render_sem = Semaphore::new(device.clone())?;
         let image_sem = Semaphore::new(device.clone())?;
-        let fence = Fence::new().build(device.clone())?;
+        let fence = Fence::builder().build(device.clone())?;
 
         let render_backend =
             RenderBackend::new(device, queue, TargetMode::Single(swapchain_images))?;
@@ -165,7 +165,7 @@ impl RenderCore for VulkanWindowRenderCore {
             .render_backend
             .render(TargetMode::Single(self.current_image_index.get()), None)?;
 
-        let submits = &[SubmitInfo::new()
+        let submits = &[SubmitInfo::default()
             .add_wait_semaphore(&self.image_available_sem)
             .add_wait_stage(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
             .add_command_buffer(&command_buffer)

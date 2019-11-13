@@ -64,7 +64,7 @@ pub struct DescriptorPool {
 }
 
 impl DescriptorPool {
-    pub fn new() -> DescriptorPoolBuilder {
+    pub fn builder() -> DescriptorPoolBuilder {
         DescriptorPoolBuilder {
             layout: None,
             descriptor_count: 1,
@@ -78,7 +78,7 @@ impl DescriptorPool {
     }
 
     pub fn prepare_set(descriptor_pool: &Arc<DescriptorPool>) -> DescriptorSetBuilder {
-        DescriptorSet::new(descriptor_pool.device.clone(), descriptor_pool.clone())
+        DescriptorSet::builder(descriptor_pool.device.clone(), descriptor_pool.clone())
     }
 }
 

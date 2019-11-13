@@ -38,7 +38,7 @@ pub struct Fence {
 }
 
 impl Fence {
-    pub fn new() -> FenceBuilder {
+    pub fn builder() -> FenceBuilder {
         FenceBuilder { signaled: false }
     }
 

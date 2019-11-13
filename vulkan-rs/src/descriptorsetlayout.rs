@@ -99,7 +99,7 @@ pub struct DescriptorSetLayout {
 }
 
 impl DescriptorSetLayout {
-    pub fn new() -> DescriptorSetLayoutBuilder {
+    pub fn builder() -> DescriptorSetLayoutBuilder {
         DescriptorSetLayoutBuilder {
             layout_bindings: Vec::new(),
             indexing_flags: Vec::new(),

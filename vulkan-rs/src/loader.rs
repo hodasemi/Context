@@ -26,7 +26,7 @@ pub fn load_static() -> VerboseResult<(DynamicLibrary, StaticFunctions)> {
     let static_functions = StaticFunctions::load(|name| unsafe {
         let str_name = name.to_str().expect("can't convert CStr");
         lib.symbol(str_name)
-            .expect(&format!("failed getting {}", str_name))
+            .unwrap_or_else(|_| panic!("failed getting {}", str_name))
     });
 
     Ok((lib, static_functions))

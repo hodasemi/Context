@@ -442,9 +442,9 @@ impl CommandBuffer {
             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
         } else if access_mask == VK_ACCESS_HOST_WRITE_BIT {
             VK_PIPELINE_STAGE_HOST_BIT
-        } else if access_mask == VK_ACCESS_TRANSFER_WRITE_BIT {
-            VK_PIPELINE_STAGE_TRANSFER_BIT
-        } else if access_mask == VK_ACCESS_TRANSFER_READ_BIT {
+        } else if access_mask == VK_ACCESS_TRANSFER_WRITE_BIT
+            || access_mask == VK_ACCESS_TRANSFER_READ_BIT
+        {
             VK_PIPELINE_STAGE_TRANSFER_BIT
         } else if access_mask == VK_ACCESS_SHADER_READ_BIT {
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT

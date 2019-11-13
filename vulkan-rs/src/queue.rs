@@ -171,6 +171,7 @@ impl Queue {
 unsafe impl Sync for Queue {}
 unsafe impl Send for Queue {}
 
+#[derive(Default)]
 pub struct SubmitInfo {
     wait_semaphores: Vec<VkSemaphore>,
     wait_stages: Vec<VkPipelineStageFlagBits>,
@@ -179,15 +180,6 @@ pub struct SubmitInfo {
 }
 
 impl SubmitInfo {
-    pub fn new() -> SubmitInfo {
-        SubmitInfo {
-            wait_semaphores: Vec::new(),
-            wait_stages: Vec::new(),
-            command_buffers: Vec::new(),
-            signal_semaphores: Vec::new(),
-        }
-    }
-
     pub fn add_wait_semaphore(mut self, wait_semaphore: impl VkHandle<VkSemaphore>) -> Self {
         self.wait_semaphores.push(wait_semaphore.vk_handle());
 

@@ -88,7 +88,7 @@ impl<'a> RenderTargetBuilder<'a> {
                     let ref_images =
                         Self::insert_prepared_target(&images, &prepared_targets[i], index);
 
-                    let mut framebuffer_builder = Framebuffer::new()
+                    let mut framebuffer_builder = Framebuffer::builder()
                         .set_render_pass(&render_pass)
                         .set_width(self.width)
                         .set_height(self.height);
@@ -106,7 +106,7 @@ impl<'a> RenderTargetBuilder<'a> {
             }
             (Some(resolve_targets), None) => {
                 for resolve_target in resolve_targets {
-                    let mut framebuffer_builder = Framebuffer::new()
+                    let mut framebuffer_builder = Framebuffer::builder()
                         .set_render_pass(&render_pass)
                         .set_width(self.width)
                         .set_height(self.height);
@@ -126,7 +126,7 @@ impl<'a> RenderTargetBuilder<'a> {
                 for prepared_target in prepared_targets {
                     let ref_images = Self::insert_prepared_target(&images, &prepared_target, index);
 
-                    let mut framebuffer_builder = Framebuffer::new()
+                    let mut framebuffer_builder = Framebuffer::builder()
                         .set_render_pass(&render_pass)
                         .set_width(self.width)
                         .set_height(self.height);
@@ -141,7 +141,7 @@ impl<'a> RenderTargetBuilder<'a> {
                 }
             }
             (None, None) => {
-                let mut framebuffer_builder = Framebuffer::new()
+                let mut framebuffer_builder = Framebuffer::builder()
                     .set_render_pass(&render_pass)
                     .set_width(self.width)
                     .set_height(self.height);

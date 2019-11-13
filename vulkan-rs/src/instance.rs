@@ -94,8 +94,7 @@ impl Layer {
                 names.push(name_string.clone());
             }
 
-            if verbose && (name == "VK_LAYER_LUNARG_api_dump" || name == "VK_LAYER_LUNARG_api_dump")
-            {
+            if verbose && name == "VK_LAYER_LUNARG_api_dump" {
                 names.push(name_string.clone());
             }
 
@@ -116,8 +115,8 @@ impl Layer {
 }
 
 impl Instance {
-    pub fn new<'a>(
-        app_info: VkApplicationInfo<'a>,
+    pub fn new(
+        app_info: VkApplicationInfo<'_>,
         debug_info: VulkanDebugInfo,
         extensions: InstanceExtensions,
     ) -> VerboseResult<Arc<Instance>> {
@@ -183,7 +182,7 @@ impl Instance {
                 println!("\t- {:?}", extension_name);
             }
 
-            println!("");
+            println!();
         }
 
         let enabled_extensions = InstanceExtensions::from_list(&checked_extensions);
@@ -311,7 +310,7 @@ impl Instance {
 
     fn get_extension_properties(
         entry_functions: &EntryFunctions,
-        layers: &Vec<VkString>,
+        layers: &[VkString],
     ) -> VerboseResult<Vec<VkString>> {
         let mut properties = HashSet::new();
 
@@ -339,7 +338,7 @@ impl Instance {
             }
         }
 
-        Ok(properties.iter().map(|p| p.clone()).collect())
+        Ok(properties.iter().cloned().collect())
     }
 }
 

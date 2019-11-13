@@ -42,7 +42,7 @@ pub struct CommandPool {
 }
 
 impl CommandPool {
-    pub fn new() -> CommandPoolBuilder {
+    pub fn builder() -> CommandPoolBuilder {
         CommandPoolBuilder {
             flags: VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
                 | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,

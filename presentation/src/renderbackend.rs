@@ -97,7 +97,7 @@ impl RenderBackend {
         let command_pool = {
             let queue_lock = queue.lock()?;
 
-            CommandPool::new()
+            CommandPool::builder()
                 .set_queue_family_index(queue_lock.family_index())
                 .build(device.clone())?
         };

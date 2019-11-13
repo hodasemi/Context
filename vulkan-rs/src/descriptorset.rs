@@ -191,7 +191,7 @@ pub struct DescriptorSet {
 }
 
 impl DescriptorSet {
-    pub(crate) fn new(
+    pub(crate) fn builder(
         device: Arc<Device>,
         descriptor_pool: Arc<DescriptorPool>,
     ) -> DescriptorSetBuilder {

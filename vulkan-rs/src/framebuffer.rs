@@ -100,7 +100,7 @@ pub struct Framebuffer {
 }
 
 impl Framebuffer {
-    pub fn new<'a>() -> FramebufferBuilder<'a> {
+    pub fn builder<'a>() -> FramebufferBuilder<'a> {
         FramebufferBuilder {
             render_pass: None,
             attachments: Vec::new(),

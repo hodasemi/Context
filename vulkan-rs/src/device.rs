@@ -74,7 +74,7 @@ impl Device {
             println!("\t- {:?}", extension_name);
         }
 
-        println!("");
+        println!();
 
         let local_device_features = physical_device.features();
 
@@ -155,10 +155,10 @@ impl Device {
         let host_requirements = host_reqs.into();
 
         for (i, memory_type) in memory_types.iter().enumerate() {
-            if (device_requirements & (1u32 << i)) != 0 {
-                if host_requirements == (memory_type.propertyFlagBits & host_requirements) {
-                    return Ok(i as u32);
-                }
+            if (device_requirements & (1u32 << i)) != 0
+                && host_requirements == (memory_type.propertyFlagBits & host_requirements)
+            {
+                return Ok(i as u32);
             }
         }
 

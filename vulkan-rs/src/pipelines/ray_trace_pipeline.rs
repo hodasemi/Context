@@ -65,30 +65,24 @@ impl RayTracingPipelineBuilder {
             match shader_module.shader_type() {
                 ShaderType::AnyHit => {
                     // sanity check
-                    if cfg!(debug_assertions) {
-                        if group.anyHitShader != VK_SHADER_UNUSED_NV {
-                            panic!("any hit shader already used in current hit group");
-                        }
+                    if cfg!(debug_assertions) && group.anyHitShader != VK_SHADER_UNUSED_NV {
+                        panic!("any hit shader already used in current hit group");
                     }
 
                     group.anyHitShader = shader_index;
                 }
                 ShaderType::ClosestHit => {
                     // sanity check
-                    if cfg!(debug_assertions) {
-                        if group.closestHitShader != VK_SHADER_UNUSED_NV {
-                            panic!("closest hit shader already used in current hit group");
-                        }
+                    if cfg!(debug_assertions) && group.closestHitShader != VK_SHADER_UNUSED_NV {
+                        panic!("closest hit shader already used in current hit group");
                     }
 
                     group.closestHitShader = shader_index;
                 }
                 ShaderType::Intersection => {
                     // sanity check
-                    if cfg!(debug_assertions) {
-                        if group.intersectionShader != VK_SHADER_UNUSED_NV {
-                            panic!("intersection shader already used in current hit group");
-                        }
+                    if cfg!(debug_assertions) && group.intersectionShader != VK_SHADER_UNUSED_NV {
+                        panic!("intersection shader already used in current hit group");
                     }
 
                     group.intersectionShader = shader_index;
@@ -332,7 +326,7 @@ impl ShaderBindingTableBuilder {
             &shader_handle_storage,
         );
 
-        let sbt_buffer = Buffer::new()
+        let sbt_buffer = Buffer::builder()
             .set_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
             .set_memory_properties(
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -356,7 +350,7 @@ impl ShaderBindingTableBuilder {
 
 impl ShaderBindingTableBuilder {
     #[inline]
-    fn entry_size(prog_id_size: u32, entries: &Vec<ShaderBindingTableEntry>) -> VkDeviceSize {
+    fn entry_size(prog_id_size: u32, entries: &[ShaderBindingTableEntry]) -> VkDeviceSize {
         let mut max_args = 0;
 
         for entry in entries {
@@ -381,7 +375,7 @@ impl ShaderBindingTableBuilder {
         sbt_data: &mut Vec<u8>,
         prog_id_size: u32,
         offset: &mut VkDeviceSize,
-        entries: &Vec<ShaderBindingTableEntry>,
+        entries: &[ShaderBindingTableEntry],
         entry_size: VkDeviceSize,
         shader_handle_storage: &[u8],
     ) {

@@ -153,7 +153,7 @@ impl OpenXRRenderCore {
             swapchains: RefCell::new(swapchains),
 
             render_backend,
-            render_fence: Fence::new().build(device.clone())?,
+            render_fence: Fence::builder().build(device.clone())?,
 
             format: VkFormat::from(format),
             width,
@@ -396,7 +396,7 @@ impl RenderCore for OpenXRRenderCore {
                 Some(Self::setup_transformations(&views)?),
             )?;
 
-            let submits = &[SubmitInfo::new()
+            let submits = &[SubmitInfo::default()
                 .add_command_buffer(command_buffer)
                 .add_wait_stage(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)];
 

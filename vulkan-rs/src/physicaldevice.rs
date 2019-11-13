@@ -98,7 +98,7 @@ impl PhysicalDevice {
 
         Ok(Arc::new(PhysicalDevice {
             instance,
-            physical_device: physical_device,
+            physical_device,
             properties,
             features: device_features,
             memory_properties: device_memory_properties,
