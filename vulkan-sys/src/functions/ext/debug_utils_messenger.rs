@@ -1,7 +1,6 @@
 use crate::load_function_ptrs;
 use crate::prelude::*;
 
-use std::os::raw::c_char;
 use std::os::raw::c_void;
 
 pub type PFN_vkDebugUtilsMessengerCallbackEXT = extern "system" fn(

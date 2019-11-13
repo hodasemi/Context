@@ -1,7 +1,6 @@
 use crate::load_function_ptrs;
 use crate::prelude::*;
 
-use std::mem::transmute;
 use std::os::raw::c_void;
 
 load_function_ptrs!(NVRayTracingFunctions, {
