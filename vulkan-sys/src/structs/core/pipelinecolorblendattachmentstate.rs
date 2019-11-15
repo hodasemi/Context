@@ -17,7 +17,7 @@ impl Default for VkPipelineColorBlendAttachmentState {
     fn default() -> Self {
         VkPipelineColorBlendAttachmentState {
             blendEnable: VK_TRUE,
-            srcColorBlendFactor: VK_BLEND_FACTOR_ONE,
+            srcColorBlendFactor: VK_BLEND_FACTOR_SRC_ALPHA,
             dstColorBlendFactor: VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
             colorBlendOp: VK_BLEND_OP_ADD,
             srcAlphaBlendFactor: VK_BLEND_FACTOR_ONE,
