@@ -2,7 +2,6 @@
 
 use super::configs::WindowConfig;
 use super::osspecific::osspecific::OsSpecific;
-use super::time::Time;
 use super::vulkancore::VulkanCore;
 
 #[cfg(feature = "audio")]
@@ -18,6 +17,7 @@ use std::env::set_var;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 pub trait ContextObject {
     fn name(&self) -> &str;
@@ -37,8 +37,7 @@ pub struct Context {
 
     os_specific: OsSpecific,
 
-    timer: Time,
-    time: Cell<f64>,
+    application_start_time: Instant,
     exit_call: Cell<bool>,
 
     // gui
@@ -97,8 +96,6 @@ impl Context {
                 }
             }
 
-            self.time.set(self.timer.time());
-
             if let Err(err) = self.update() {
                 if let Some(fallback) = &self.fallback.try_borrow()?.as_ref() {
                     (fallback)(&err.message())?;
@@ -143,7 +140,7 @@ impl Context {
     }
 
     pub fn time(&self) -> f64 {
-        self.time.get()
+        self.application_start_time.elapsed().as_secs_f64()
     }
 
     pub fn controllers(&self) -> VerboseResult<Ref<'_, Vec<Rc<RefCell<Controller>>>>> {
@@ -384,8 +381,7 @@ impl ContextBuilder {
 
             os_specific,
 
-            timer: Time::new(),
-            time: Cell::new(0.0),
+            application_start_time: Instant::now(),
             exit_call: Cell::new(false),
 
             context_object: RefCell::new(None),

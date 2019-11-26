@@ -5,7 +5,6 @@ authors = ["hodasemi <superschneider@t-online.de>"]
 edition = "2018"
 
 [dependencies]
-time = "0.1.42"
 presentation = { path = "../presentation" }
 ears = { version = "0.7.0", optional = true }
 
