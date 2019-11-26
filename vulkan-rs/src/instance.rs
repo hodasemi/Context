@@ -82,14 +82,8 @@ impl Layer {
             let name_string = self.props[i].layer_name()?;
             let name = name_string.as_str();
 
-            if name == "VK_LAYER_LUNARG_core_validation"
-                || name == "VK_LAYER_GOOGLE_threading"
-                || name == "VK_LAYER_LUNARG_parameter_validation"
-                || name == "VK_LAYER_LUNARG_object_tracker"
-                || name == "VK_LAYER_LUNARG_standard_validation"
-                || name == "VK_LAYER_GOOGLE_unique_objects"
+            if name == "VK_LAYER_LUNARG_standard_validation"
                 || name == "VK_LAYER_KHRONOS_validation"
-            // || name == "VK_LAYER_LUNARG_monitor"
             {
                 names.push(name_string.clone());
             }
