@@ -20,6 +20,7 @@ impl RayTracingPipelineBuilder {
         self
     }
 
+    // TODO: add support for specialization constants
     pub fn add_shader(mut self, shader_module: Arc<ShaderModule>, data: Option<Vec<u8>>) -> Self {
         self.shader_binding_table_builder = match shader_module.shader_type() {
             ShaderType::RayGeneration => self
@@ -28,7 +29,10 @@ impl RayTracingPipelineBuilder {
             ShaderType::Miss => self
                 .shader_binding_table_builder
                 .add_miss_program(self.shader_groups.len() as u32, data),
-            _ => panic!("unsupported shader type: {:?}", shader_module.shader_type()),
+            _ => panic!(
+                "unsupported shader type: {:?}, expected RayGen or Miss Shader",
+                shader_module.shader_type()
+            ),
         };
 
         let shader_index = self.shader_modules.len();
@@ -46,6 +50,7 @@ impl RayTracingPipelineBuilder {
         self
     }
 
+    // TODO: add support for specialization constants
     pub fn add_hit_shaders<'a>(
         mut self,
         shader_modules: impl IntoIterator<Item = &'a Arc<ShaderModule>>,
@@ -88,7 +93,7 @@ impl RayTracingPipelineBuilder {
                     group.intersectionShader = shader_index;
                     group.r#type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_NV;
                 }
-                _ => panic!("unsupported shader type: {:?}", shader_module.shader_type()),
+                _ => panic!("unsupported shader type: {:?}, expected AnyHit, ClosestHit or Intersection Shader", shader_module.shader_type()),
             }
 
             self.shader_modules.push(shader_module.clone());

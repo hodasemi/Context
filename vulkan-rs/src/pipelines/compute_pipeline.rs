@@ -14,6 +14,7 @@ pub struct ComputePipelineBuilder<'a> {
 }
 
 impl<'a> ComputePipelineBuilder<'a> {
+    // TODO: add support for specialization constants
     pub fn set_shader_module(mut self, shader_module: &'a Arc<ShaderModule>) -> Self {
         if cfg!(debug_assertions) {
             if self.shader_module.is_some() {

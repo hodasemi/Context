@@ -39,6 +39,7 @@ pub struct GraphicsPipelineBuilder {
 }
 
 impl GraphicsPipelineBuilder {
+    // TODO: add support for specialization constants
     pub fn set_vertex_shader(
         mut self,
         shader: Arc<ShaderModule>,
@@ -56,6 +57,7 @@ impl GraphicsPipelineBuilder {
         self
     }
 
+    // TODO: add support for specialization constants
     pub fn set_tesselation_shader(
         mut self,
         tesselation_control: Arc<ShaderModule>,
@@ -80,6 +82,7 @@ impl GraphicsPipelineBuilder {
         self
     }
 
+    // TODO: add support for specialization constants
     pub fn set_geometry_shader(mut self, shader: Arc<ShaderModule>) -> Self {
         if cfg!(debug_assertions) {
             assert_eq!(shader.shader_type(), ShaderType::Geometry);
@@ -90,6 +93,7 @@ impl GraphicsPipelineBuilder {
         self
     }
 
+    // TODO: add support for specialization constants
     pub fn set_fragment_shader(mut self, shader: Arc<ShaderModule>) -> Self {
         if cfg!(debug_assertions) {
             assert_eq!(shader.shader_type(), ShaderType::Fragment);
