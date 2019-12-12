@@ -136,42 +136,43 @@ impl<T: Clone> Buffer<T> {
     }
 
     pub fn into_device_local(
-        self,
+        src_buffer: Arc<Buffer<T>>,
         command_buffer: &Arc<CommandBuffer>,
         queue: &Arc<Mutex<Queue>>,
     ) -> VerboseResult<Arc<Buffer<T>>> {
-        let new_usage =
-            (self.usage ^ VK_BUFFER_USAGE_TRANSFER_SRC_BIT) | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        let new_usage = (src_buffer.usage ^ VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
+            | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
         let device_local_buffer = Buffer::builder()
             .set_memory_properties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
             .set_usage(new_usage)
-            .set_size(self.size)
-            .build(self.device.clone())?;
+            .set_size(src_buffer.size)
+            .build(src_buffer.device.clone())?;
 
         command_buffer.begin(VkCommandBufferBeginInfo::new(
             VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
         ))?;
 
         command_buffer.copy_buffer(
-            &self,
+            &src_buffer,
             &device_local_buffer,
             &[VkBufferCopy {
                 srcOffset: 0,
                 dstOffset: 0,
-                size: self.byte_size(),
+                size: src_buffer.byte_size(),
             }],
         );
 
         command_buffer.end()?;
 
         let submit = SubmitInfo::default().add_command_buffer(command_buffer);
-        let fence = Fence::builder().build(self.device.clone())?;
+        let fence = Fence::builder().build(src_buffer.device.clone())?;
 
         let queue_lock = queue.lock()?;
         queue_lock.submit(Some(&fence), &[submit])?;
 
-        self.device
+        src_buffer
+            .device
             .wait_for_fences(&[&fence], true, 1_000_000_000)?;
 
         Ok(device_local_buffer)
