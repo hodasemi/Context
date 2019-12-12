@@ -511,8 +511,8 @@ impl CommandBuffer {
 
     pub fn copy_buffer<T, U>(
         &self,
-        src_buffer: &Arc<Buffer<T>>,
-        dst_buffer: &Arc<Buffer<U>>,
+        src_buffer: &Buffer<T>,
+        dst_buffer: &Buffer<U>,
         regions: &[VkBufferCopy],
     ) {
         self.device.cmd_copy_buffer(

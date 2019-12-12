@@ -5,7 +5,7 @@ use crate::{impl_vk_handle_t, mappedmemory::VkMappedMemory};
 
 use std;
 use std::mem;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub struct BufferBuilder<'a, T> {
     flags: VkBufferCreateFlagBits,
@@ -133,6 +133,48 @@ impl<T: Clone> Buffer<T> {
 
     pub fn map_complete(&self) -> VerboseResult<VkMappedMemory<'_, T>> {
         self.memory.map(self.size, 0)
+    }
+
+    pub fn into_device_local(
+        self,
+        command_buffer: &Arc<CommandBuffer>,
+        queue: &Arc<Mutex<Queue>>,
+    ) -> VerboseResult<Arc<Buffer<T>>> {
+        let new_usage =
+            (self.usage ^ VK_BUFFER_USAGE_TRANSFER_SRC_BIT) | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+        let device_local_buffer = Buffer::builder()
+            .set_memory_properties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+            .set_usage(new_usage)
+            .set_size(self.size)
+            .build(self.device.clone())?;
+
+        command_buffer.begin(VkCommandBufferBeginInfo::new(
+            VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        ))?;
+
+        command_buffer.copy_buffer(
+            &self,
+            &device_local_buffer,
+            &[VkBufferCopy {
+                srcOffset: 0,
+                dstOffset: 0,
+                size: self.byte_size(),
+            }],
+        );
+
+        command_buffer.end()?;
+
+        let submit = SubmitInfo::default().add_command_buffer(command_buffer);
+        let fence = Fence::builder().build(self.device.clone())?;
+
+        let queue_lock = queue.lock()?;
+        queue_lock.submit(Some(&fence), &[submit])?;
+
+        self.device
+            .wait_for_fences(&[&fence], true, 1_000_000_000)?;
+
+        Ok(device_local_buffer)
     }
 }
 
