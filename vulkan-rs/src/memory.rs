@@ -66,7 +66,7 @@ impl<T> Memory<T> {
     }
 }
 
-impl<T: Copy> Memory<T> {
+impl<T: Clone> Memory<T> {
     pub fn map(
         &self,
         length: VkDeviceSize,

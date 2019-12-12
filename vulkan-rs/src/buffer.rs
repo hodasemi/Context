@@ -57,7 +57,7 @@ impl<'a, T> BufferBuilder<'a, T> {
     }
 }
 
-impl<'a, T: Copy> BufferBuilder<'a, T> {
+impl<'a, T: Clone> BufferBuilder<'a, T> {
     pub fn build(self, device: Arc<Device>) -> VerboseResult<Arc<Buffer<T>>> {
         let size = match self.data {
             Some(data) => data.len() as VkDeviceSize,
@@ -114,7 +114,7 @@ pub struct Buffer<T> {
     size: VkDeviceSize,
 }
 
-impl<T: Copy> Buffer<T> {
+impl<T: Clone> Buffer<T> {
     pub fn fill(&self, data: &[T]) -> VerboseResult<()> {
         let mut buffer_map = self.map(data.len() as VkDeviceSize, 0)?;
 

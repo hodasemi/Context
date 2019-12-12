@@ -776,17 +776,17 @@ impl CommandBuffer {
         )
     }
 
-    pub fn trace_rays(
+    pub fn trace_rays<T, U, V, W>(
         &self,
-        raygen_shader_binding_table: &Arc<Buffer<impl Copy>>,
+        raygen_shader_binding_table: &Arc<Buffer<T>>,
         raygen_shader_binding_offset: VkDeviceSize,
-        miss_shader_binding_table: &Arc<Buffer<impl Copy>>,
+        miss_shader_binding_table: &Arc<Buffer<U>>,
         miss_shader_binding_offset: VkDeviceSize,
         miss_shader_binding_stride: VkDeviceSize,
-        hit_shader_binding_table: &Arc<Buffer<impl Copy>>,
+        hit_shader_binding_table: &Arc<Buffer<V>>,
         hit_shader_binding_offset: VkDeviceSize,
         hit_shader_binding_stride: VkDeviceSize,
-        callable_shader_binding_table: &Arc<Buffer<impl Copy>>,
+        callable_shader_binding_table: &Arc<Buffer<W>>,
         callable_shader_binding_offset: VkDeviceSize,
         callable_shader_binding_stride: VkDeviceSize,
         width: u32,

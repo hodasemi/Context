@@ -5,14 +5,14 @@ use std::ops::{Index, IndexMut};
 #[derive(Debug)]
 pub struct VkMappedMemory<'a, T>
 where
-    T: Copy,
+    T: Clone,
 {
     data: &'a mut [T],
     device: &'a Device,
     memory: VkDeviceMemory,
 }
 
-impl<'a, T: Copy> VkMappedMemory<'a, T> {
+impl<'a, T: Clone> VkMappedMemory<'a, T> {
     pub(crate) fn new(
         device: &'a Device,
         memory: VkDeviceMemory,
@@ -26,7 +26,7 @@ impl<'a, T: Copy> VkMappedMemory<'a, T> {
     }
 
     pub fn copy(&mut self, data: &[T]) {
-        self.data.copy_from_slice(data);
+        self.data.clone_from_slice(data);
     }
 
     pub fn iter(&self) -> Iter<'_, T> {
@@ -38,7 +38,7 @@ impl<'a, T: Copy> VkMappedMemory<'a, T> {
     }
 }
 
-impl<'a, T: Copy> Index<usize> for VkMappedMemory<'a, T> {
+impl<'a, T: Clone> Index<usize> for VkMappedMemory<'a, T> {
     type Output = T;
 
     fn index(&self, index: usize) -> &T {
@@ -46,13 +46,13 @@ impl<'a, T: Copy> Index<usize> for VkMappedMemory<'a, T> {
     }
 }
 
-impl<'a, T: Copy> IndexMut<usize> for VkMappedMemory<'a, T> {
+impl<'a, T: Clone> IndexMut<usize> for VkMappedMemory<'a, T> {
     fn index_mut(&mut self, index: usize) -> &mut T {
         &mut self.data[index]
     }
 }
 
-impl<'a, T: Copy> Drop for VkMappedMemory<'a, T> {
+impl<'a, T: Clone> Drop for VkMappedMemory<'a, T> {
     fn drop(&mut self) {
         self.device.unmap_memory(self.memory);
     }

@@ -443,7 +443,7 @@ impl Device {
         };
     }
 
-    pub fn map_memory<U: Copy>(
+    pub fn map_memory<U: Clone>(
         &self,
         memory: VkDeviceMemory,
         offset: VkDeviceSize,
