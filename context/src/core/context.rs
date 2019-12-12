@@ -38,7 +38,6 @@ pub struct Context {
     os_specific: OsSpecific,
 
     application_start_time: Instant,
-    frame_time: Cell<f64>,
     exit_call: Cell<bool>,
 
     // gui
@@ -80,9 +79,6 @@ impl Context {
 
     pub fn run(&self) -> VerboseResult<()> {
         'running: loop {
-            self.frame_time
-                .set(self.application_start_time.elapsed().as_secs_f64());
-
             if self.exit_call.get() {
                 break 'running;
             }
@@ -144,7 +140,7 @@ impl Context {
     }
 
     pub fn time(&self) -> f64 {
-        self.frame_time.get()
+        self.application_start_time.elapsed().as_secs_f64()
     }
 
     pub fn controllers(&self) -> VerboseResult<Ref<'_, Vec<Rc<RefCell<Controller>>>>> {
@@ -389,7 +385,6 @@ impl ContextBuilder {
             os_specific,
 
             application_start_time: Instant::now(),
-            frame_time: Cell::new(0.0),
             exit_call: Cell::new(false),
 
             context_object: RefCell::new(None),
