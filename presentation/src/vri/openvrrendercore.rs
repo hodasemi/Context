@@ -41,7 +41,7 @@ impl OpenVRRenderCore {
     ) -> VerboseResult<(Self, TargetMode<()>)> {
         let sample_count = VK_SAMPLE_COUNT_1_BIT;
         let (width, height) = vri.image_size();
-        let format = VK_FORMAT_R8G8B8A8_SRGB;
+        let format = VK_FORMAT_R8G8B8A8_UNORM;
 
         let (left_image, right_image) =
             Self::create_target_images(width, height, sample_count, format, device, queue)?;
