@@ -5,4 +5,9 @@
     "lldb.displayFormat": "auto",
     "lldb.showDisassembly": "never",
     "lldb.dereferencePointers": true,
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#362D03",
+        "titleBar.activeBackground": "#4B4005",
+        "titleBar.activeForeground": "#FEFBEB"
+    },
 }
