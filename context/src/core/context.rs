@@ -40,10 +40,11 @@ pub struct Context {
     application_start_time: Instant,
     exit_call: Cell<bool>,
 
-    // gui
     context_object: RefCell<Option<Arc<dyn ContextObject>>>,
 
     fallback: RefCell<Option<Box<dyn Fn(&str) -> VerboseResult<()>>>>,
+
+    push_events: RefCell<Vec<Box<dyn FnOnce() -> VerboseResult<()>>>>,
 }
 
 impl Context {
@@ -70,6 +71,15 @@ impl Context {
                 create_error!("OpenVR backend has no window config")
             }
         }
+    }
+
+    pub fn push_event(
+        &self,
+        event: impl FnOnce() -> VerboseResult<()> + 'static,
+    ) -> VerboseResult<()> {
+        self.push_events.try_borrow_mut()?.push(Box::new(event));
+
+        Ok(())
     }
 
     #[cfg(feature = "audio")]
@@ -174,6 +184,12 @@ impl Context {
             if let Err(err) = context_object.update() {
                 return Err(err);
             }
+        }
+
+        let mut push_events = self.push_events.try_borrow_mut()?;
+
+        while let Some(event) = push_events.pop() {
+            event()?;
         }
 
         Ok(())
@@ -390,6 +406,8 @@ impl ContextBuilder {
             context_object: RefCell::new(None),
 
             fallback: RefCell::new(None),
+
+            push_events: RefCell::new(Vec::new()),
         });
 
         let weak_context = Arc::downgrade(&context);
