@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::env::set_var;
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 use std::time::Instant;
 
 pub trait ContextObject {
@@ -33,17 +33,17 @@ pub struct Context {
     render_core: Box<dyn RenderCore>,
 
     #[cfg(feature = "audio")]
-    sound_handler: RefCell<SoundHandler>,
+    sound_handler: Mutex<SoundHandler>,
 
     os_specific: OsSpecific,
 
     application_start_time: Instant,
 
-    context_object: RefCell<Option<Arc<dyn ContextObject>>>,
+    context_object: RwLock<Option<Arc<dyn ContextObject>>>,
 
-    fallback: RefCell<Option<Box<dyn Fn(&str) -> VerboseResult<()>>>>,
+    fallback: Mutex<Option<Box<dyn Fn(&str) -> VerboseResult<()>>>>,
 
-    push_events: RefCell<Vec<Box<dyn FnOnce() -> VerboseResult<()>>>>,
+    push_events: Mutex<Vec<Box<dyn FnOnce() -> VerboseResult<()>>>>,
 }
 
 impl Context {
@@ -55,7 +55,7 @@ impl Context {
         &self,
         context_object: Option<Arc<dyn ContextObject>>,
     ) -> VerboseResult<()> {
-        *self.context_object.try_borrow_mut()? = context_object;
+        *self.context_object.write()? = context_object;
 
         Ok(())
     }
@@ -76,14 +76,14 @@ impl Context {
         &self,
         event: impl FnOnce() -> VerboseResult<()> + 'static,
     ) -> VerboseResult<()> {
-        self.push_events.try_borrow_mut()?.push(Box::new(event));
+        self.push_events.lock()?.push(Box::new(event));
 
         Ok(())
     }
 
     #[cfg(feature = "audio")]
-    pub fn sound(&self) -> VerboseResult<RefMut<'_, SoundHandler>> {
-        Ok(self.sound_handler.try_borrow_mut()?)
+    pub fn sound(&self) -> VerboseResult<MutexGuard<'_, SoundHandler>> {
+        Ok(self.sound_handler.lock()?)
     }
 
     pub fn run(&self) -> VerboseResult<()> {
@@ -95,14 +95,14 @@ impl Context {
                     }
                 }
                 Err(err) => {
-                    if let Some(fallback) = self.fallback.try_borrow()?.as_ref() {
+                    if let Some(fallback) = self.fallback.lock()?.as_ref() {
                         (fallback)(&err.message())?;
                     }
                 }
             }
 
             if let Err(err) = self.update() {
-                if let Some(fallback) = &self.fallback.try_borrow()?.as_ref() {
+                if let Some(fallback) = &self.fallback.lock()?.as_ref() {
                     (fallback)(&err.message())?;
                 }
             }
@@ -127,7 +127,7 @@ impl Context {
     where
         F: Fn(&str) -> VerboseResult<()> + 'static,
     {
-        *self.fallback.try_borrow_mut()? = Some(Box::new(fallback));
+        *self.fallback.lock()? = Some(Box::new(fallback));
 
         Ok(())
     }
@@ -172,13 +172,13 @@ impl std::fmt::Debug for Context {
 impl Context {
     #[inline]
     fn update(&self) -> VerboseResult<()> {
-        if let Some(context_object) = self.context_object.try_borrow()?.as_ref() {
+        if let Some(context_object) = self.context_object.read()?.as_ref() {
             if let Err(err) = context_object.update() {
                 return Err(err);
             }
         }
 
-        let mut push_events = self.push_events.try_borrow_mut()?;
+        let mut push_events = self.push_events.lock()?;
 
         while let Some(event) = push_events.pop() {
             event()?;
@@ -388,17 +388,17 @@ impl ContextBuilder {
             render_core,
 
             #[cfg(feature = "audio")]
-            sound_handler: RefCell::new(self.create_sound_handler()?),
+            sound_handler: Mutex::new(self.create_sound_handler()?),
 
             os_specific,
 
             application_start_time: Instant::now(),
 
-            context_object: RefCell::new(None),
+            context_object: RwLock::new(None),
 
-            fallback: RefCell::new(None),
+            fallback: Mutex::new(None),
 
-            push_events: RefCell::new(Vec::new()),
+            push_events: Mutex::new(Vec::new()),
         });
 
         let weak_context = Arc::downgrade(&context);
@@ -411,7 +411,7 @@ impl ContextBuilder {
                     // TODO: remove stupid workaround
                     let mut ctx_obj = None;
 
-                    if let Some(context_object) = context.context_object.try_borrow()?.as_ref() {
+                    if let Some(context_object) = context.context_object.read()?.as_ref() {
                         ctx_obj = Some(context_object.clone());
                     }
 
