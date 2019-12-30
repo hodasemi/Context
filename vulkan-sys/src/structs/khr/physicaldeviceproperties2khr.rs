@@ -27,6 +27,9 @@ impl Default for VkPhysicalDeviceProperties2KHR {
     }
 }
 
+unsafe impl Sync for VkPhysicalDeviceProperties2KHR {}
+unsafe impl Send for VkPhysicalDeviceProperties2KHR {}
+
 impl_pnext!(
     VkPhysicalDeviceProperties2KHR,
     VkPhysicalDeviceRayTracingPropertiesNV

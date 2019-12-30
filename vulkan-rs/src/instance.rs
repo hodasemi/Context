@@ -262,9 +262,6 @@ impl Instance {
     }
 }
 
-unsafe impl Send for Instance {}
-unsafe impl Sync for Instance {}
-
 impl_vk_handle!(Instance, VkInstance, instance);
 
 // private

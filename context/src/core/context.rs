@@ -174,9 +174,6 @@ impl std::fmt::Debug for Context {
     }
 }
 
-unsafe impl Send for Context {}
-unsafe impl Sync for Context {}
-
 impl Context {
     #[inline]
     fn update(&self) -> VerboseResult<()> {

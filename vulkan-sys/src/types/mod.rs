@@ -24,9 +24,6 @@ macro_rules! SetupU64Conv {
                 $name(v)
             }
         }
-
-        unsafe impl Sync for $name {}
-        unsafe impl Send for $name {}
     };
 }
 
@@ -46,8 +43,5 @@ macro_rules! SetupUSizeConv {
                 $name(v)
             }
         }
-
-        unsafe impl Sync for $name {}
-        unsafe impl Send for $name {}
     };
 }

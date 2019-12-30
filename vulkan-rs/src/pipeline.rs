@@ -29,9 +29,6 @@ pub struct Pipeline {
     pipeline: VkPipeline,
 }
 
-unsafe impl Sync for Pipeline {}
-unsafe impl Send for Pipeline {}
-
 impl Pipeline {
     pub(crate) fn new(
         device: Arc<Device>,

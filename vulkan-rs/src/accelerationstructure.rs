@@ -283,9 +283,6 @@ impl AccelerationStructure {
     }
 }
 
-unsafe impl Send for AccelerationStructure {}
-unsafe impl Sync for AccelerationStructure {}
-
 impl_vk_handle!(
     AccelerationStructure,
     VkAccelerationStructureNV,

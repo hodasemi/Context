@@ -78,9 +78,6 @@ impl<T: Clone> Memory<T> {
     }
 }
 
-unsafe impl<T> Send for Memory<T> {}
-unsafe impl<T> Sync for Memory<T> {}
-
 impl_vk_handle_t!(Memory, VkDeviceMemory, memory);
 
 impl<T> Drop for Memory<T> {

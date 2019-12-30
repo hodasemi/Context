@@ -64,3 +64,6 @@ impl Default for VkPhysicalDeviceDescriptorIndexingPropertiesEXT {
         }
     }
 }
+
+unsafe impl Sync for VkPhysicalDeviceDescriptorIndexingPropertiesEXT {}
+unsafe impl Send for VkPhysicalDeviceDescriptorIndexingPropertiesEXT {}

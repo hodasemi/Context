@@ -168,9 +168,6 @@ impl Queue {
     }
 }
 
-unsafe impl Sync for Queue {}
-unsafe impl Send for Queue {}
-
 #[derive(Default)]
 pub struct SubmitInfo {
     wait_semaphores: Vec<VkSemaphore>,

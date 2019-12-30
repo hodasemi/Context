@@ -112,9 +112,6 @@ impl DescriptorSetLayout {
     }
 }
 
-unsafe impl Send for DescriptorSetLayout {}
-unsafe impl Sync for DescriptorSetLayout {}
-
 impl_vk_handle!(
     DescriptorSetLayout,
     VkDescriptorSetLayout,

@@ -34,9 +34,6 @@ impl RenderPass {
     }
 }
 
-unsafe impl Sync for RenderPass {}
-unsafe impl Send for RenderPass {}
-
 impl_vk_handle!(RenderPass, VkRenderPass, render_pass);
 
 impl Drop for RenderPass {

@@ -38,9 +38,6 @@ impl PipelineCache {
     }
 }
 
-unsafe impl Sync for PipelineCache {}
-unsafe impl Send for PipelineCache {}
-
 impl_vk_handle!(PipelineCache, VkPipelineCache, pipeline_cache);
 
 impl Drop for PipelineCache {

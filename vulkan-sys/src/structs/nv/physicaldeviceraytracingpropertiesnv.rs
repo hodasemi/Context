@@ -49,3 +49,6 @@ impl Default for VkPhysicalDeviceRayTracingPropertiesNV {
         Self::new(0, 0, 0, 0, 0, 0, 0, 0)
     }
 }
+
+unsafe impl Sync for VkPhysicalDeviceRayTracingPropertiesNV {}
+unsafe impl Send for VkPhysicalDeviceRayTracingPropertiesNV {}

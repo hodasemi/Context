@@ -200,9 +200,6 @@ impl<T> Buffer<T> {
     }
 }
 
-unsafe impl<T> Send for Buffer<T> {}
-unsafe impl<T> Sync for Buffer<T> {}
-
 impl_vk_handle_t!(Buffer, VkBuffer, buffer);
 
 impl<T> VkHandle<VkDeviceMemory> for Buffer<T> {

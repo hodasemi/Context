@@ -47,9 +47,6 @@ pub struct CommandBuffer {
     buffer: VkCommandBuffer,
 }
 
-unsafe impl Send for CommandBuffer {}
-unsafe impl Sync for CommandBuffer {}
-
 impl_vk_handle!(CommandBuffer, VkCommandBuffer, buffer);
 
 impl CommandBuffer {

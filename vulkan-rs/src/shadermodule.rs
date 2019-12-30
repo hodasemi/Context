@@ -112,9 +112,6 @@ impl ShaderModule {
     }
 }
 
-unsafe impl Sync for ShaderModule {}
-unsafe impl Send for ShaderModule {}
-
 impl_vk_handle!(ShaderModule, VkShaderModule, shader_module);
 
 impl Drop for ShaderModule {

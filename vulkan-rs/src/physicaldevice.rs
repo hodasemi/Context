@@ -20,9 +20,6 @@ pub struct PhysicalDevice {
     descriptor_indexing_properties: VkPhysicalDeviceDescriptorIndexingPropertiesEXT,
 }
 
-unsafe impl Sync for PhysicalDevice {}
-unsafe impl Send for PhysicalDevice {}
-
 impl PhysicalDevice {
     pub fn new(instance: Arc<Instance>) -> VerboseResult<Arc<PhysicalDevice>> {
         let physical_devices = instance.enumerate_physical_devices()?;

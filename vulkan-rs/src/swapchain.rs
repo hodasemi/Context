@@ -170,9 +170,6 @@ impl Swapchain {
     }
 }
 
-unsafe impl Sync for Swapchain {}
-unsafe impl Send for Swapchain {}
-
 impl VkHandle<VkSwapchainKHR> for Swapchain {
     fn vk_handle(&self) -> VkSwapchainKHR {
         self.swapchain.get()
