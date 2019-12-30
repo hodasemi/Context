@@ -2,20 +2,22 @@ use utilities::prelude::*;
 
 use crate::prelude::*;
 
-use std::cell::{Cell, RefCell};
 use std::cmp;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicU32, Ordering::SeqCst},
+    Arc, Mutex,
+};
 
 #[derive(Debug)]
 pub struct Swapchain {
-    width: Cell<u32>,
-    height: Cell<u32>,
+    width: AtomicU32,
+    height: AtomicU32,
 
     device: Arc<Device>,
     surface: Arc<Surface>,
 
-    create_info: RefCell<VkSwapchainCreateInfoKHR>,
-    swapchain: Cell<VkSwapchainKHR>,
+    create_info: Mutex<VkSwapchainCreateInfoKHR>,
+    swapchain: Mutex<VkSwapchainKHR>,
 }
 
 impl Swapchain {
@@ -89,15 +91,15 @@ impl Swapchain {
         let swapchain = device.create_swapchain(&swapchain_ci)?;
 
         Ok(Arc::new(Swapchain {
-            width: Cell::new(extent.width),
-            height: Cell::new(extent.height),
+            width: AtomicU32::new(extent.width),
+            height: AtomicU32::new(extent.height),
 
             device,
             surface: surface.clone(),
 
-            create_info: RefCell::new(swapchain_ci),
+            create_info: Mutex::new(swapchain_ci),
 
-            swapchain: Cell::new(swapchain),
+            swapchain: Mutex::new(swapchain),
         }))
     }
 
@@ -113,9 +115,9 @@ impl Swapchain {
             }
         };
 
-        let mut swapchain_ci = self.create_info.try_borrow_mut()?;
+        let mut swapchain_ci = self.create_info.lock()?;
         swapchain_ci.imageExtent = extent;
-        swapchain_ci.set_old_swapchain(self.swapchain.get());
+        swapchain_ci.set_old_swapchain(self.swapchain.lock()?.clone());
 
         let swapchain = self.device.create_swapchain(&swapchain_ci)?;
 
@@ -123,11 +125,11 @@ impl Swapchain {
         self.destroy();
 
         // replace swapchain
-        self.swapchain.set(swapchain);
+        *self.swapchain.lock()? = swapchain;
 
         // set new surface size
-        self.width.set(extent.width);
-        self.height.set(extent.height);
+        self.width.store(extent.width, SeqCst);
+        self.height.store(extent.height, SeqCst);
 
         Ok(())
     }
@@ -139,7 +141,7 @@ impl Swapchain {
         fence: Option<&Arc<Fence>>,
     ) -> VerboseResult<OutOfDate<u32>> {
         self.device.acquire_next_image(
-            self.swapchain.get(),
+            self.swapchain.lock()?.clone(),
             time_out,
             match present_complete_semaphore {
                 Some(sem) => Some(sem.vk_handle()),
@@ -153,44 +155,45 @@ impl Swapchain {
     }
 
     pub fn vk_images(&self) -> VerboseResult<Vec<VkImage>> {
-        self.device.swapchain_images(self.swapchain.get())
+        self.device.swapchain_images(self.swapchain.lock()?.clone())
     }
 
     pub fn width(&self) -> u32 {
-        self.width.get()
+        self.width.load(SeqCst)
     }
 
     pub fn height(&self) -> u32 {
-        self.height.get()
+        self.height.load(SeqCst)
     }
 
     #[inline]
     fn destroy(&self) {
-        self.device.destroy_swapchain(self.swapchain.get())
+        self.device
+            .destroy_swapchain(self.swapchain.lock().unwrap().clone())
     }
 }
 
 impl VkHandle<VkSwapchainKHR> for Swapchain {
     fn vk_handle(&self) -> VkSwapchainKHR {
-        self.swapchain.get()
+        self.swapchain.lock().unwrap().clone()
     }
 }
 
 impl<'a> VkHandle<VkSwapchainKHR> for &'a Swapchain {
     fn vk_handle(&self) -> VkSwapchainKHR {
-        self.swapchain.get()
+        self.swapchain.lock().unwrap().clone()
     }
 }
 
 impl VkHandle<VkSwapchainKHR> for Arc<Swapchain> {
     fn vk_handle(&self) -> VkSwapchainKHR {
-        self.swapchain.get()
+        self.swapchain.lock().unwrap().clone()
     }
 }
 
 impl<'a> VkHandle<VkSwapchainKHR> for &'a Arc<Swapchain> {
     fn vk_handle(&self) -> VkSwapchainKHR {
-        self.swapchain.get()
+        self.swapchain.lock().unwrap().clone()
     }
 }
 

@@ -34,7 +34,7 @@ pub fn create_render_core(
     device: &Arc<Device>,
     queue: &Arc<Mutex<Queue>>,
     enable_vsync: bool,
-) -> VerboseResult<(Box<dyn RenderCore>, TargetMode<()>)> {
+) -> VerboseResult<(Box<dyn RenderCore + Send + Sync>, TargetMode<()>)> {
     match presentation_core.backend() {
         PresentationBackend::Window(wsi) => {
             let (render_core, target_mode) =

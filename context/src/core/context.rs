@@ -30,7 +30,7 @@ pub trait ContextObject {
 pub struct Context {
     core: VulkanCore,
     pub(crate) presentation: PresentationCore,
-    render_core: Box<dyn RenderCore>,
+    render_core: Box<dyn RenderCore + Send + Sync>,
 
     #[cfg(feature = "audio")]
     sound_handler: Mutex<SoundHandler>,
@@ -119,7 +119,7 @@ impl Context {
         Ok(())
     }
 
-    pub fn render_core(&self) -> &Box<dyn RenderCore> {
+    pub fn render_core(&self) -> &Box<dyn RenderCore + Send + Sync> {
         &self.render_core
     }
 

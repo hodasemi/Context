@@ -37,21 +37,24 @@ pub trait RenderCore: std::fmt::Debug {
     }
 
     // scene handling
-    fn add_scene(&self, scene: Arc<dyn TScene>) -> VerboseResult<()>;
-    fn remove_scene(&self, scene: &Arc<dyn TScene>) -> VerboseResult<()>;
+    fn add_scene(&self, scene: Arc<dyn TScene + Sync + Send>) -> VerboseResult<()>;
+    fn remove_scene(&self, scene: &Arc<dyn TScene + Sync + Send>) -> VerboseResult<()>;
     fn clear_scenes(&self) -> VerboseResult<()>;
 
     // post process handling
-    fn add_post_processing_routine(&self, post_process: Arc<dyn PostProcess>) -> VerboseResult<()>;
+    fn add_post_processing_routine(
+        &self,
+        post_process: Arc<dyn PostProcess + Sync + Send>,
+    ) -> VerboseResult<()>;
     fn remove_post_processing_routine(
         &self,
-        post_process: &Arc<dyn PostProcess>,
+        post_process: &Arc<dyn PostProcess + Sync + Send>,
     ) -> VerboseResult<()>;
     fn clear_post_processing_routines(&self) -> VerboseResult<()>;
 
     // getter
     fn image_count(&self) -> usize;
-    fn images(&self) -> TargetMode<Vec<Arc<Image>>>;
+    fn images(&self) -> VerboseResult<TargetMode<Vec<Arc<Image>>>>;
     fn allocate_primary_buffer(&self) -> VerboseResult<Arc<CommandBuffer>>;
     fn allocate_secondary_buffer(&self) -> VerboseResult<Arc<CommandBuffer>>;
     fn width(&self) -> u32;

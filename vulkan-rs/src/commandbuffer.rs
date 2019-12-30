@@ -5,8 +5,7 @@ use crate::prelude::*;
 
 use crate::impl_vk_handle;
 
-use std::cell::RefCell;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub struct QueryEnable {
     pub query_flags: VkQueryControlFlagBits,
@@ -31,7 +30,7 @@ impl CommandBufferBuilder {
         Ok(Arc::new(CommandBuffer {
             device,
             pool: command_pool.clone(),
-            pipeline: RefCell::new(None),
+            pipeline: Mutex::new(None),
 
             buffer: command_buffer,
         }))
@@ -42,7 +41,7 @@ impl CommandBufferBuilder {
 pub struct CommandBuffer {
     device: Arc<Device>,
     pool: Arc<CommandPool>,
-    pipeline: RefCell<Option<Arc<Pipeline>>>,
+    pipeline: Mutex<Option<Arc<Pipeline>>>,
 
     buffer: VkCommandBuffer,
 }
@@ -230,7 +229,7 @@ impl CommandBuffer {
             ),
         }
 
-        *self.pipeline.try_borrow_mut()? = Some(pipeline.clone());
+        *self.pipeline.lock()? = Some(pipeline.clone());
 
         Ok(())
     }
@@ -248,7 +247,7 @@ impl CommandBuffer {
         descriptor_sets: &[&dyn VkHandle<VkDescriptorSet>],
     ) -> VerboseResult<()> {
         let (pipeline_bind_point, vk_layout) = {
-            let opt_borrow = self.pipeline.try_borrow()?;
+            let opt_borrow = self.pipeline.lock()?;
             let pipeline = match opt_borrow.as_ref() {
                 Some(pipeline) => pipeline,
                 None => create_error!("no pipeline in command buffer"),
@@ -363,7 +362,7 @@ impl CommandBuffer {
         stage_flags: impl Into<VkShaderStageFlagBits>,
         data: &U,
     ) -> VerboseResult<()> {
-        let opt_borrow = self.pipeline.try_borrow()?;
+        let opt_borrow = self.pipeline.lock()?;
         let pipeline = match opt_borrow.as_ref() {
             Some(pipeline) => pipeline,
             None => create_error!("no pipeline in command buffer"),

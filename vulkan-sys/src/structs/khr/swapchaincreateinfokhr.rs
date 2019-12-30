@@ -76,3 +76,6 @@ impl VkSwapchainCreateInfoKHR {
         self.oldSwapchain = swapchain;
     }
 }
+
+unsafe impl Send for VkSwapchainCreateInfoKHR {}
+unsafe impl Sync for VkSwapchainCreateInfoKHR {}

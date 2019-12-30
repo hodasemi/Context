@@ -4,9 +4,11 @@ use cgmath::Matrix4;
 use utilities::prelude::*;
 use vulkan_rs::prelude::*;
 
-use std::cell::{Cell, RefCell};
 use std::ops::Deref;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering::SeqCst},
+    Arc, Mutex,
+};
 
 pub enum TargetMode<T> {
     Single(T),
@@ -69,14 +71,14 @@ pub struct RenderBackend {
     queue: Arc<Mutex<Queue>>,
 
     // driver provided images
-    swapchain_images: RefCell<TargetMode<Vec<Arc<Image>>>>,
-    image_count: Cell<usize>,
+    swapchain_images: Mutex<TargetMode<Vec<Arc<Image>>>>,
+    image_count: AtomicUsize,
 
     cmd_pool: Arc<CommandPool>,
     command_buffer: Arc<CommandBuffer>,
 
-    scenes: RefCell<Vec<Arc<dyn TScene>>>,
-    post_processes: RefCell<Vec<Arc<dyn PostProcess>>>,
+    scenes: Mutex<Vec<Arc<dyn TScene + Sync + Send>>>,
+    post_processes: Mutex<Vec<Arc<dyn PostProcess + Sync + Send>>>,
 }
 
 impl RenderBackend {
@@ -109,14 +111,14 @@ impl RenderBackend {
             device: device.clone(),
             queue: queue.clone(),
 
-            swapchain_images: RefCell::new(images),
-            image_count: Cell::new(image_count),
+            swapchain_images: Mutex::new(images),
+            image_count: AtomicUsize::new(image_count),
 
             cmd_pool: command_pool,
             command_buffer,
 
-            scenes: RefCell::new(Vec::new()),
-            post_processes: RefCell::new(Vec::new()),
+            scenes: Mutex::new(Vec::new()),
+            post_processes: Mutex::new(Vec::new()),
         })
     }
 }
@@ -135,7 +137,7 @@ impl RenderBackend {
         image_indices: TargetMode<usize>,
         vr_data: Option<TargetMode<VRTransformations>>,
     ) -> VerboseResult<Arc<CommandBuffer>> {
-        let scenes = self.scenes.try_borrow()?;
+        let scenes = self.scenes.lock()?;
 
         // update scenes
         for scene in scenes.iter() {
@@ -149,7 +151,7 @@ impl RenderBackend {
 
         // clear the current swapchain image
         {
-            let swapchain_images = self.swapchain_images.borrow();
+            let swapchain_images = self.swapchain_images.lock()?;
             let target_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
             match (&image_indices, swapchain_images.deref()) {
@@ -194,7 +196,7 @@ impl RenderBackend {
         }
 
         // post processing
-        for post_process in self.post_processes.try_borrow()?.iter() {
+        for post_process in self.post_processes.lock()?.iter() {
             post_process.process(&self.command_buffer, &image_indices)?;
         }
 
@@ -209,21 +211,24 @@ impl RenderBackend {
         width: u32,
         height: u32,
     ) -> VerboseResult<()> {
-        self.image_count.set(match &images {
-            TargetMode::Single(images) => images.len(),
-            TargetMode::Stereo(left_images, right_images) => {
-                debug_assert!(left_images.len() == right_images.len());
-                left_images.len()
-            }
-        });
+        self.image_count.store(
+            match &images {
+                TargetMode::Single(images) => images.len(),
+                TargetMode::Stereo(left_images, right_images) => {
+                    debug_assert!(left_images.len() == right_images.len());
+                    left_images.len()
+                }
+            },
+            SeqCst,
+        );
 
-        *self.swapchain_images.try_borrow_mut()? = images;
+        *self.swapchain_images.lock()? = images;
 
-        for scene in self.scenes.try_borrow()?.iter() {
+        for scene in self.scenes.lock()?.iter() {
             scene.resize()?;
         }
 
-        for post_process in self.post_processes.try_borrow()?.iter() {
+        for post_process in self.post_processes.lock()?.iter() {
             post_process.resize(width, height)?;
         }
 
@@ -231,8 +236,8 @@ impl RenderBackend {
     }
 
     // scene handling
-    pub fn add_scene(&self, scene: Arc<dyn TScene>) -> VerboseResult<()> {
-        let mut scenes = self.scenes.try_borrow_mut()?;
+    pub fn add_scene(&self, scene: Arc<dyn TScene + Sync + Send>) -> VerboseResult<()> {
+        let mut scenes = self.scenes.lock()?;
 
         // check if that scene is already present
         if scenes.iter().find(|s| Arc::ptr_eq(s, &scene)).is_none() {
@@ -242,24 +247,24 @@ impl RenderBackend {
         Ok(())
     }
 
-    pub fn remove_scene(&self, scene: &Arc<dyn TScene>) -> VerboseResult<()> {
-        let mut scenes = self.scenes.try_borrow_mut()?;
+    pub fn remove_scene(&self, scene: &Arc<dyn TScene + Sync + Send>) -> VerboseResult<()> {
+        let mut scenes = self.scenes.lock()?;
         erase_arc(&mut scenes, scene);
 
         Ok(())
     }
 
     pub fn clear_scenes(&self) -> VerboseResult<()> {
-        self.scenes.try_borrow_mut()?.clear();
+        self.scenes.lock()?.clear();
 
         Ok(())
     }
 
     pub fn add_post_processing_routine(
         &self,
-        post_process: Arc<dyn PostProcess>,
+        post_process: Arc<dyn PostProcess + Sync + Send>,
     ) -> VerboseResult<()> {
-        let mut post_processes = self.post_processes.try_borrow_mut()?;
+        let mut post_processes = self.post_processes.lock()?;
 
         // only add if it isn't present already
         if post_processes
@@ -277,9 +282,9 @@ impl RenderBackend {
 
     pub fn remove_post_processing_routine(
         &self,
-        post_process: &Arc<dyn PostProcess>,
+        post_process: &Arc<dyn PostProcess + Sync + Send>,
     ) -> VerboseResult<()> {
-        let mut post_processes = self.post_processes.try_borrow_mut()?;
+        let mut post_processes = self.post_processes.lock()?;
 
         if let Some(index) = post_processes
             .iter()
@@ -292,18 +297,18 @@ impl RenderBackend {
     }
 
     pub fn clear_post_processing_routines(&self) -> VerboseResult<()> {
-        self.post_processes.try_borrow_mut()?.clear();
+        self.post_processes.lock()?.clear();
 
         Ok(())
     }
 
     // getter
     pub fn image_count(&self) -> usize {
-        self.image_count.get()
+        self.image_count.load(SeqCst)
     }
 
-    pub fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
-        self.swapchain_images.borrow().clone()
+    pub fn images(&self) -> VerboseResult<TargetMode<Vec<Arc<Image>>>> {
+        Ok(self.swapchain_images.lock()?.clone())
     }
 
     pub fn allocate_primary_buffer(&self) -> VerboseResult<Arc<CommandBuffer>> {

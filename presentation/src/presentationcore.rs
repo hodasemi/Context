@@ -9,7 +9,7 @@ use vulkan_rs::prelude::*;
 
 use sdl2::Sdl;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub enum PresentationBackend {
@@ -63,7 +63,7 @@ impl ApplicationInfo {
 }
 
 pub struct PresentationCore {
-    _sdl_context: Sdl,
+    _sdl_context: Mutex<Sdl>,
 
     event_system: EventSystem,
 
@@ -107,7 +107,7 @@ impl PresentationCore {
                 )?),
             },
 
-            _sdl_context: context,
+            _sdl_context: Mutex::new(context),
         })
     }
 

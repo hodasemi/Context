@@ -80,11 +80,11 @@ pub mod openvrrendercore {
         }
 
         // scene handling
-        fn add_scene(&self, _: Arc<dyn TScene>) -> VerboseResult<()> {
+        fn add_scene(&self, _: Arc<dyn TScene + Sync + Send>) -> VerboseResult<()> {
             unimplemented!()
         }
 
-        fn remove_scene(&self, _: &Arc<dyn TScene>) -> VerboseResult<()> {
+        fn remove_scene(&self, _: &Arc<dyn TScene + Sync + Send>) -> VerboseResult<()> {
             unimplemented!()
         }
 
@@ -95,14 +95,14 @@ pub mod openvrrendercore {
         // post process handling
         fn add_post_processing_routine(
             &self,
-            _post_process: Arc<dyn PostProcess>,
+            _post_process: Arc<dyn PostProcess + Sync + Send>,
         ) -> VerboseResult<()> {
             unimplemented!()
         }
 
         fn remove_post_processing_routine(
             &self,
-            _post_process: &Arc<dyn PostProcess>,
+            _post_process: &Arc<dyn PostProcess + Sync + Send>,
         ) -> VerboseResult<()> {
             unimplemented!()
         }
@@ -116,7 +116,7 @@ pub mod openvrrendercore {
             unimplemented!()
         }
 
-        fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
+        fn images(&self) -> VerboseResult<TargetMode<Vec<Arc<Image>>>> {
             unimplemented!()
         }
 

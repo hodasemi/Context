@@ -5,8 +5,10 @@ use super::windowsystemintegration::WindowSystemIntegration;
 use utilities::prelude::*;
 use vulkan_rs::prelude::*;
 
-use std::cell::Cell;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering::SeqCst},
+    Arc, Mutex,
+};
 use std::u64;
 
 pub struct VulkanWindowRenderCore {
@@ -22,7 +24,7 @@ pub struct VulkanWindowRenderCore {
 
     render_backend: RenderBackend,
 
-    current_image_index: Cell<usize>,
+    current_image_index: AtomicUsize,
 }
 
 impl VulkanWindowRenderCore {
@@ -82,7 +84,7 @@ impl VulkanWindowRenderCore {
 
             render_backend,
 
-            current_image_index: Cell::new(0),
+            current_image_index: AtomicUsize::new(0),
         };
 
         Ok((window_render_core, TargetMode::Single(())))
@@ -96,7 +98,7 @@ impl VulkanWindowRenderCore {
                 None,
             )? {
                 OutOfDate::Ok(index) => {
-                    self.current_image_index.set(index as usize);
+                    self.current_image_index.store(index as usize, SeqCst);
                     break;
                 }
                 OutOfDate::OutOfDate => self.resize()?,
@@ -163,9 +165,10 @@ impl RenderCore for VulkanWindowRenderCore {
     fn next_frame(&self) -> VerboseResult<bool> {
         self.aquire_next_image_index()?;
 
-        let command_buffer = self
-            .render_backend
-            .render(TargetMode::Single(self.current_image_index.get()), None)?;
+        let command_buffer = self.render_backend.render(
+            TargetMode::Single(self.current_image_index.load(SeqCst)),
+            None,
+        )?;
 
         let submits = &[SubmitInfo::default()
             .add_wait_semaphore(&self.image_available_sem)
@@ -180,7 +183,7 @@ impl RenderCore for VulkanWindowRenderCore {
 
             queue_lock.present(
                 &[&self.swapchain],
-                &[self.current_image_index.get() as u32],
+                &[self.current_image_index.load(SeqCst) as u32],
                 &[&self.render_finished_sem],
             )?
         } {
@@ -199,11 +202,11 @@ impl RenderCore for VulkanWindowRenderCore {
     }
 
     // scene handling
-    fn add_scene(&self, scene: Arc<dyn TScene>) -> VerboseResult<()> {
+    fn add_scene(&self, scene: Arc<dyn TScene + Sync + Send>) -> VerboseResult<()> {
         self.render_backend.add_scene(scene)
     }
 
-    fn remove_scene(&self, scene: &Arc<dyn TScene>) -> VerboseResult<()> {
+    fn remove_scene(&self, scene: &Arc<dyn TScene + Sync + Send>) -> VerboseResult<()> {
         self.render_backend.remove_scene(scene)
     }
 
@@ -212,14 +215,17 @@ impl RenderCore for VulkanWindowRenderCore {
     }
 
     // post process handling
-    fn add_post_processing_routine(&self, post_process: Arc<dyn PostProcess>) -> VerboseResult<()> {
+    fn add_post_processing_routine(
+        &self,
+        post_process: Arc<dyn PostProcess + Sync + Send>,
+    ) -> VerboseResult<()> {
         self.render_backend
             .add_post_processing_routine(post_process)
     }
 
     fn remove_post_processing_routine(
         &self,
-        post_process: &Arc<dyn PostProcess>,
+        post_process: &Arc<dyn PostProcess + Sync + Send>,
     ) -> VerboseResult<()> {
         self.render_backend
             .remove_post_processing_routine(post_process)
@@ -234,7 +240,7 @@ impl RenderCore for VulkanWindowRenderCore {
         self.render_backend.image_count()
     }
 
-    fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
+    fn images(&self) -> VerboseResult<TargetMode<Vec<Arc<Image>>>> {
         self.render_backend.images()
     }
 

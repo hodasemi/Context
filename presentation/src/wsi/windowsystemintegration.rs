@@ -14,12 +14,12 @@ use sdl2::Sdl;
 use utilities::prelude::*;
 use vulkan_rs::prelude::*;
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::error::Error;
 use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 const SDL_SYSWM_WINDOWS: u32 = 0x1;
 const SDL_SYSWM_X11: u32 = 0x2;
@@ -93,16 +93,16 @@ impl CellRect {
 pub struct WindowSystemIntegration {
     // sdl
     _video_subsystem: sdl2::VideoSubsystem,
-    window: RefCell<sdl2::video::Window>,
+    window: Mutex<sdl2::video::Window>,
 
-    cursor: RefCell<Option<Cursor>>,
+    cursor: Mutex<Option<Cursor>>,
 
     displays: Vec<Display>,
     _enabled_display_index: usize,
 
     pre_fullscreen_rect: CellRect,
 
-    surface: RefCell<Option<Arc<Surface>>>,
+    surface: Mutex<Option<Arc<Surface>>>,
 }
 
 impl WindowSystemIntegration {
@@ -199,9 +199,9 @@ impl WindowSystemIntegration {
 
         let wsi = WindowSystemIntegration {
             _video_subsystem: video_subsystem,
-            window: RefCell::new(window),
+            window: Mutex::new(window),
 
-            cursor: RefCell::new(None),
+            cursor: Mutex::new(None),
 
             displays,
 
@@ -209,7 +209,7 @@ impl WindowSystemIntegration {
 
             pre_fullscreen_rect: rect,
 
-            surface: RefCell::new(None),
+            surface: Mutex::new(None),
         };
 
         if create_info.fullscreen {
@@ -220,7 +220,7 @@ impl WindowSystemIntegration {
     }
 
     pub fn is_fullscreen(&self) -> VerboseResult<bool> {
-        Ok(match self.window.try_borrow()?.fullscreen_state() {
+        Ok(match self.window.lock()?.fullscreen_state() {
             FullscreenType::Desktop => false,
             FullscreenType::True => true,
             FullscreenType::Off => false,
@@ -228,7 +228,7 @@ impl WindowSystemIntegration {
     }
 
     pub fn set_fullscreen(&self, fullscreen: bool) -> VerboseResult<()> {
-        let mut window = self.window.try_borrow_mut()?;
+        let mut window = self.window.lock()?;
 
         if fullscreen {
             // store window information
@@ -275,7 +275,7 @@ impl WindowSystemIntegration {
         title: &str,
         message: &str,
     ) -> VerboseResult<()> {
-        let window = self.window.try_borrow()?;
+        let window = self.window.lock()?;
 
         if let Err(err) = show_simple_message_box(flags, title, message, Some(window.deref())) {
             match err {
@@ -298,7 +298,7 @@ impl WindowSystemIntegration {
     }
 
     pub fn set_opacity(&self, opacity: f32) -> VerboseResult<()> {
-        self.window.try_borrow_mut()?.set_opacity(opacity)?;
+        self.window.lock()?.set_opacity(opacity)?;
 
         Ok(())
     }
@@ -320,7 +320,7 @@ impl WindowSystemIntegration {
             PixelFormatEnum::RGBA8888,
         )?;
 
-        self.window.try_borrow_mut()?.set_icon(surface);
+        self.window.lock()?.set_icon(surface);
 
         Ok(())
     }
@@ -347,13 +347,13 @@ impl WindowSystemIntegration {
 
         cursor.set();
 
-        *self.cursor.try_borrow_mut()? = Some(cursor);
+        *self.cursor.lock()? = Some(cursor);
 
         Ok(())
     }
 
-    fn sdl2_window(&self) -> *mut SDL_Window {
-        self.window.borrow().raw()
+    fn raw_sdl2_window(&self) -> VerboseResult<*mut SDL_Window> {
+        Ok(self.window.lock()?.raw())
     }
 
     pub fn displays(&self) -> &[Display] {
@@ -363,17 +363,17 @@ impl WindowSystemIntegration {
     pub fn create_vulkan_surface(&self, instance: &Arc<Instance>) -> VerboseResult<()> {
         let vk_surface = self
             .window
-            .try_borrow()?
+            .lock()?
             .vulkan_create_surface(instance.vk_instance().raw())?
             .into();
 
-        *self.surface.try_borrow_mut()? = Some(Surface::from_vk_surface(vk_surface, instance));
+        *self.surface.lock()? = Some(Surface::from_vk_surface(vk_surface, instance));
 
         Ok(())
     }
 
     pub fn surface(&self) -> VerboseResult<Arc<Surface>> {
-        Ok(self.surface.try_borrow()?.as_ref().unwrap().clone())
+        Ok(self.surface.lock()?.as_ref().unwrap().clone())
     }
 
     pub(crate) fn activate_vulkan_instance_extensions(
@@ -385,7 +385,7 @@ impl WindowSystemIntegration {
             let mut ret: SdlSysWmInfo = tmp.assume_init();
             ret.version = sdl2::version::version();
 
-            SDL_GetWindowWMInfo(self.sdl2_window(), &mut ret);
+            SDL_GetWindowWMInfo(self.raw_sdl2_window()?, &mut ret);
 
             ret
         };
