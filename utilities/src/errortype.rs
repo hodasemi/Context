@@ -90,10 +90,10 @@ impl From<Box<dyn Any + Send + 'static>> for UtilError {
     }
 }
 
-impl<T: std::fmt::Debug> From<std::sync::PoisonError<T>> for UtilError {
-    fn from(error: std::sync::PoisonError<T>) -> UtilError {
+impl<T> From<std::sync::PoisonError<T>> for UtilError {
+    fn from(_: std::sync::PoisonError<T>) -> UtilError {
         UtilError {
-            inner: Context::new(format!("{:?}", error.get_ref())),
+            inner: Context::new(format!("poison error")),
         }
     }
 }
