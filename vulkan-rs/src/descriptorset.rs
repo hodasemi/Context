@@ -70,7 +70,7 @@ impl DescriptorWrite {
                     .map(|image| VkDescriptorImageInfo {
                         sampler: image.vk_handle(),
                         imageView: image.vk_handle(),
-                        imageLayout: image.image_layout.get(),
+                        imageLayout: image.image_layout().expect("image layout lock error"),
                     })
                     .collect(),
             ),
@@ -87,7 +87,7 @@ impl DescriptorWrite {
                     .map(|image| VkDescriptorImageInfo {
                         sampler: image.vk_handle(),
                         imageView: image.vk_handle(),
-                        imageLayout: image.image_layout.get(),
+                        imageLayout: image.image_layout().expect("image layout lock error"),
                     })
                     .collect(),
             ),

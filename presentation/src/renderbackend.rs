@@ -161,7 +161,7 @@ impl RenderBackend {
                         swapchain_image,
                         VkClearColorValue::float32([0.0, 0.0, 0.0, 1.0]),
                         target_layout,
-                    );
+                    )?;
                 }
                 (
                     TargetMode::Stereo(left_image_index, right_image_index),
@@ -175,14 +175,14 @@ impl RenderBackend {
                         left_image,
                         VkClearColorValue::float32([1.0, 0.0, 0.0, 1.0]),
                         target_layout,
-                    );
+                    )?;
 
                     Self::clear_image(
                         &self.command_buffer,
                         right_image,
                         VkClearColorValue::float32([0.0, 1.0, 0.0, 1.0]),
                         target_layout,
-                    );
+                    )?;
                 }
                 _ => create_error!("not fitting target modes!"),
             }
@@ -322,9 +322,11 @@ impl RenderBackend {
         image: &Arc<Image>,
         clear_color: VkClearColorValue,
         target_layout: VkImageLayout,
-    ) {
-        command_buffer.set_full_image_layout(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        command_buffer.clear_color_image(image, clear_color);
-        command_buffer.set_full_image_layout(image, target_layout);
+    ) -> VerboseResult<()> {
+        command_buffer.set_full_image_layout(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)?;
+        command_buffer.clear_color_image(image, clear_color)?;
+        command_buffer.set_full_image_layout(image, target_layout)?;
+
+        Ok(())
     }
 }

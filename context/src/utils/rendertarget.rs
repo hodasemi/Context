@@ -290,8 +290,8 @@ impl<'a> RenderTargetBuilder<'a> {
                         VK_ATTACHMENT_STORE_OP_STORE,
                         VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                         VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                        prepared_images[0].image_layout.get(),
-                        prepared_images[0].image_layout.get(),
+                        prepared_images[0].image_layout()?,
+                        prepared_images[0].image_layout()?,
                     ));
 
                     // add color reference
@@ -438,13 +438,13 @@ impl<'a> RenderTargetBuilder<'a> {
                 VK_ATTACHMENT_STORE_OP_STORE,
                 VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                 VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                resolve_targets[0].image_layout.get(),
-                resolve_targets[0].image_layout.get(),
+                resolve_targets[0].image_layout()?,
+                resolve_targets[0].image_layout()?,
             ));
 
             resolve_reference = Some(VkAttachmentReference {
                 attachment: attachment_count,
-                layout: resolve_targets[0].image_layout.get(),
+                layout: resolve_targets[0].image_layout()?,
             });
         }
 

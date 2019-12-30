@@ -144,7 +144,7 @@ impl CommandBuffer {
         src_stage: impl Into<VkPipelineStageFlagBits>,
         new_image_layout: VkImageLayout,
         dst_stage: impl Into<VkPipelineStageFlagBits>,
-    ) {
+    ) -> VerboseResult<()> {
         let src_access_mask = Image::src_layout_to_access(old_image_layout);
         let dst_access_mask = Image::dst_layout_to_access(new_image_layout);
 
@@ -166,7 +166,7 @@ impl CommandBuffer {
             )],
         );
 
-        image.image_layout.set(new_image_layout);
+        image.set_image_layout(new_image_layout)
     }
 
     pub fn begin_render_pass(
@@ -382,8 +382,8 @@ impl CommandBuffer {
         image: &Image,
         new_image_layout: VkImageLayout,
         subresource_range: VkImageSubresourceRange,
-    ) {
-        let src_access = Image::src_layout_to_access(image.image_layout.get());
+    ) -> VerboseResult<()> {
+        let src_access = Image::src_layout_to_access(image.image_layout()?);
         let dst_access = Image::dst_layout_to_access(new_image_layout);
 
         self.pipeline_barrier(
@@ -395,7 +395,7 @@ impl CommandBuffer {
             &[VkImageMemoryBarrier::new(
                 src_access,
                 dst_access,
-                image.image_layout.get(),
+                image.image_layout()?,
                 new_image_layout,
                 VK_QUEUE_FAMILY_IGNORED,
                 VK_QUEUE_FAMILY_IGNORED,
@@ -404,11 +404,15 @@ impl CommandBuffer {
             )],
         );
 
-        image.image_layout.set(new_image_layout);
+        image.set_image_layout(new_image_layout)
     }
 
-    pub fn set_full_image_layout(&self, image: &Arc<Image>, new_image_layout: VkImageLayout) {
-        let src_access = Image::src_layout_to_access(image.image_layout.get());
+    pub fn set_full_image_layout(
+        &self,
+        image: &Arc<Image>,
+        new_image_layout: VkImageLayout,
+    ) -> VerboseResult<()> {
+        let src_access = Image::src_layout_to_access(image.image_layout()?);
         let dst_access = Image::dst_layout_to_access(new_image_layout);
 
         self.pipeline_barrier(
@@ -420,7 +424,7 @@ impl CommandBuffer {
             &[VkImageMemoryBarrier::new(
                 src_access,
                 dst_access,
-                image.image_layout.get(),
+                image.image_layout()?,
                 new_image_layout,
                 VK_QUEUE_FAMILY_IGNORED,
                 VK_QUEUE_FAMILY_IGNORED,
@@ -429,7 +433,7 @@ impl CommandBuffer {
             )],
         );
 
-        image.image_layout.set(new_image_layout);
+        image.set_image_layout(new_image_layout)
     }
 
     pub fn access_to_stage(access_mask: impl Into<VkAccessFlagBits>) -> VkPipelineStageFlags {
@@ -538,7 +542,12 @@ impl CommandBuffer {
         );
     }
 
-    pub fn blit_complete(&self, src_image: &Arc<Image>, dst_image: &Arc<Image>, filter: VkFilter) {
+    pub fn blit_complete(
+        &self,
+        src_image: &Arc<Image>,
+        dst_image: &Arc<Image>,
+        filter: VkFilter,
+    ) -> VerboseResult<()> {
         let image_blit = VkImageBlit {
             srcSubresource: src_image.full_resource_layers(),
             srcOffsets: [
@@ -563,11 +572,13 @@ impl CommandBuffer {
         self.blit_image(
             src_image,
             dst_image,
-            src_image.image_layout.get(),
-            dst_image.image_layout.get(),
+            src_image.image_layout()?,
+            dst_image.image_layout()?,
             &[image_blit],
             filter,
         );
+
+        Ok(())
     }
 
     pub fn blit_image(
@@ -630,14 +641,20 @@ impl CommandBuffer {
         unimplemented!();
     }
 
-    pub fn clear_color_image(&self, image: &Arc<Image>, clear_color: VkClearColorValue) {
+    pub fn clear_color_image(
+        &self,
+        image: &Arc<Image>,
+        clear_color: VkClearColorValue,
+    ) -> VerboseResult<()> {
         self.device.cmd_clear_color_image(
             self.buffer,
             image.vk_handle(),
-            image.image_layout.get(),
+            image.image_layout()?,
             clear_color,
             &[image.full_resource_range()],
         );
+
+        Ok(())
     }
 
     pub fn clear_depth_stencil_image(&self) {

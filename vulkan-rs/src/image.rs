@@ -3,7 +3,6 @@ use utilities::prelude::*;
 use crate::impl_vk_handle;
 use crate::prelude::*;
 
-use std::cell::Cell;
 use std::cmp;
 use std::sync::{Arc, Mutex};
 
@@ -121,7 +120,7 @@ impl ImageBuilder {
                     sampler,
 
                     format: preinitialized_image.format,
-                    image_layout: Cell::new(VK_IMAGE_LAYOUT_UNDEFINED),
+                    image_layout: Mutex::new(VK_IMAGE_LAYOUT_UNDEFINED),
 
                     aspect_mask: self.subresource_range.aspectMask,
 
@@ -586,7 +585,7 @@ impl ImageBuilder {
             sampler,
 
             format,
-            image_layout: Cell::new(info.vk_image_create_info.initialLayout),
+            image_layout: Mutex::new(info.vk_image_create_info.initialLayout),
 
             aspect_mask: view_ci.subresourceRange.aspectMask,
 
@@ -658,7 +657,7 @@ pub struct Image {
 
     // image information
     format: VkFormat,
-    pub image_layout: Cell<VkImageLayout>,
+    image_layout: Mutex<VkImageLayout>,
 
     aspect_mask: VkImageAspectFlagBits,
     width: u32,
@@ -836,6 +835,18 @@ impl Image {
         self.sample_count
     }
 
+    pub fn image_layout(&self) -> VerboseResult<VkImageLayout> {
+        Ok(self.image_layout.lock()?.clone())
+    }
+
+    pub fn set_image_layout(&self, layout: VkImageLayout) -> VerboseResult<()> {
+        let mut image_layout = self.image_layout.lock()?;
+
+        *image_layout = layout;
+
+        Ok(())
+    }
+
     pub fn full_resource_range(&self) -> VkImageSubresourceRange {
         VkImageSubresourceRange {
             aspectMask: self.aspect_mask,
@@ -940,7 +951,7 @@ fn into_layout(image: &Image, layout: VkImageLayout) -> VerboseResult<()> {
     };
 
     // change image layout
-    command_buffer.set_image_layout(image, layout, subresource_range);
+    command_buffer.set_image_layout(image, layout, subresource_range)?;
 
     // end command buffer recording
     command_buffer.end()?;
@@ -1015,7 +1026,7 @@ where
         image,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         subresource_range.clone(),
-    );
+    )?;
 
     // the actual copy command
     command_buffer.copy_buffer_to_image(
@@ -1034,14 +1045,14 @@ where
             &command_buffer,
             image,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        );
+        )?;
     } else {
         // set image to be usable inside a shader
         command_buffer.set_image_layout(
             image,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             subresource_range,
-        );
+        )?;
     }
 
     // end command buffer recording
@@ -1093,7 +1104,7 @@ fn copy_images_to_imagearray(
         image_array,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         array_subresource_range.clone(),
-    );
+    )?;
 
     for (i, image) in images.iter().enumerate() {
         // if source and target image have the same count of
@@ -1102,17 +1113,17 @@ fn copy_images_to_imagearray(
         // correct target level and layer
         if image.levels() >= image_array.levels() {
             for k in 0..image_array.levels() {
-                copy_image_to_image(&command_buffer, image, image_array, k, i as u32);
+                copy_image_to_image(&command_buffer, image, image_array, k, i as u32)?;
             }
         // if the source image has less mip maps than the target image,
         // we just gonna copy the first level and blit the rest
         } else {
-            copy_image_to_image(&command_buffer, image, image_array, 0, i as u32);
+            copy_image_to_image(&command_buffer, image, image_array, 0, i as u32)?;
             blit_mip_maps(
                 &command_buffer,
                 image_array,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            );
+            )?;
         }
     }
 
@@ -1121,7 +1132,7 @@ fn copy_images_to_imagearray(
         image_array,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         array_subresource_range,
-    );
+    )?;
 
     // end command buffer recording
     command_buffer.end()?;
@@ -1143,7 +1154,7 @@ fn copy_image_to_image(
     dst_image: &Arc<Image>,
     mip_level: u32,
     dst_layer: u32,
-) {
+) -> VerboseResult<()> {
     // copy information to get every source into the right target slot
     let image_copy = VkImageCopy {
         srcSubresource: VkImageSubresourceLayers {
@@ -1180,7 +1191,7 @@ fn copy_image_to_image(
         src_image,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         subresource_range.clone(),
-    );
+    )?;
 
     // copy the source data into the target slot
     command_buffer.copy_image(
@@ -1196,14 +1207,16 @@ fn copy_image_to_image(
         src_image,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         subresource_range,
-    );
+    )?;
+
+    Ok(())
 }
 
 fn blit_mip_maps(
     command_buffer: &Arc<CommandBuffer>,
     image: &Arc<Image>,
     target_image_layout: VkImageLayout,
-) {
+) -> VerboseResult<()> {
     let mut mip_width = image.width();
     let mut mip_height = image.height();
 
@@ -1226,7 +1239,7 @@ fn blit_mip_maps(
             image,
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             subresource_range.clone(),
-        );
+        )?;
 
         // create the blit information to blit the data from one mip level to another
         let image_blit = VkImageBlit {
@@ -1279,7 +1292,7 @@ fn blit_mip_maps(
         );
 
         // set mip level i - 1 to target layout
-        command_buffer.set_image_layout(image, target_image_layout, subresource_range.clone());
+        command_buffer.set_image_layout(image, target_image_layout, subresource_range.clone())?;
 
         mip_width = if mip_width > 1 { mip_width / 2 } else { 1 };
         mip_height = if mip_height > 1 { mip_height / 2 } else { 1 };
@@ -1287,5 +1300,7 @@ fn blit_mip_maps(
 
     // set last level to be target layout
     subresource_range.baseMipLevel = image.levels() - 1;
-    command_buffer.set_image_layout(image, target_image_layout, subresource_range);
+    command_buffer.set_image_layout(image, target_image_layout, subresource_range)?;
+
+    Ok(())
 }
