@@ -11,6 +11,7 @@ use presentation::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 macro_rules! sound_ctor {
@@ -25,10 +26,10 @@ macro_rules! sound_ctor {
             }
 
             impl $struct_name {
-                fn new(path: &str, sound_type: &str) -> VerboseResult<Rc<Self>> {
+                fn new(path: &str, sound_type: &str) -> VerboseResult<Arc<Self>> {
                     let $member = $type_name::new(path)?;
 
-                    Ok(Rc::new($struct_name {
+                    Ok(Arc::new($struct_name {
                         duration: $member.get_duration(),
                         $member: RefCell::new($member),
                         path: path.to_string(),
@@ -135,6 +136,10 @@ macro_rules! sound_ctor {
                     Ok(())
                 }
             }
+
+            // safe since, OpenAL is thread safe
+            unsafe impl Send for $struct_name {}
+            unsafe impl Sync for $struct_name {}
         )*
     }
 }
@@ -146,10 +151,10 @@ impl Sound {
         path: &str,
         sound_type: &str,
         data: Rc<RefCell<SoundData>>,
-    ) -> VerboseResult<Rc<Self>> {
+    ) -> VerboseResult<Arc<Self>> {
         let sound = ALSound::new_with_data(data)?;
 
-        Ok(Rc::new(Sound {
+        Ok(Arc::new(Sound {
             duration: sound.get_duration(),
             sound: RefCell::new(sound),
             path: path.to_string(),
@@ -186,10 +191,10 @@ pub struct SoundHandler {
 
     // sound handling
     sound_volumes: HashMap<String, f32>,
-    sounds: HashMap<String, Vec<Rc<Sound>>>,
+    sounds: HashMap<String, Vec<Arc<Sound>>>,
 
     // music handling
-    music: Vec<Rc<Music>>,
+    music: Vec<Arc<Music>>,
 
     // 'clever' data handling
     datas: HashMap<String, Rc<RefCell<SoundData>>>,
@@ -240,7 +245,7 @@ impl SoundHandler {
         }
     }
 
-    pub fn load_sound(&mut self, path: &str, sound_type: &str) -> VerboseResult<Rc<Sound>> {
+    pub fn load_sound(&mut self, path: &str, sound_type: &str) -> VerboseResult<Arc<Sound>> {
         // create sound
         let sound = match self.datas.get(path) {
             Some(data) => Sound::from_data(path, sound_type, data.clone())?,
@@ -276,7 +281,7 @@ impl SoundHandler {
         Ok(sound)
     }
 
-    pub fn load_music(&mut self, path: &str) -> VerboseResult<Rc<Music>> {
+    pub fn load_music(&mut self, path: &str) -> VerboseResult<Arc<Music>> {
         // create music
         let music = Music::new(path, "music")?;
 
@@ -392,3 +397,7 @@ impl SoundHandler {
         self.datas.clear();
     }
 }
+
+// should be safe
+unsafe impl Send for SoundHandler {}
+unsafe impl Sync for SoundHandler {}
