@@ -38,7 +38,6 @@ pub struct Context {
     os_specific: OsSpecific,
 
     application_start_time: Instant,
-    exit_call: Cell<bool>,
 
     context_object: RefCell<Option<Arc<dyn ContextObject>>>,
 
@@ -89,10 +88,6 @@ impl Context {
 
     pub fn run(&self) -> VerboseResult<()> {
         'running: loop {
-            if self.exit_call.get() {
-                break 'running;
-            }
-
             match self.presentation.event_system().poll_events() {
                 Ok(res) => {
                     if !res {
@@ -137,8 +132,8 @@ impl Context {
         Ok(())
     }
 
-    pub fn close(&self) {
-        self.exit_call.set(true);
+    pub fn close(&self) -> VerboseResult<()> {
+        self.presentation.event_system().quit()
     }
 
     pub fn device(&self) -> &Arc<Device> {
@@ -398,7 +393,6 @@ impl ContextBuilder {
             os_specific,
 
             application_start_time: Instant::now(),
-            exit_call: Cell::new(false),
 
             context_object: RefCell::new(None),
 

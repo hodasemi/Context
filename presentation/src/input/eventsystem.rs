@@ -4,6 +4,7 @@ use sdl2::event::{Event, EventType as SdlEventType};
 use sdl2::keyboard::Keycode;
 use sdl2::mouse::{MouseButton as SdlMouseButton, MouseUtil};
 use sdl2::EventPump;
+use sdl2::EventSubsystem;
 use sdl2::GameControllerSubsystem;
 use sdl2::Sdl;
 
@@ -39,6 +40,7 @@ pub struct EventSystem {
     event_pump: RefCell<EventPump>,
     mouse: MouseUtil,
     controller_subsystem: GameControllerSubsystem,
+    event_subsystem: EventSubsystem,
 
     controller_axis_deadzone: Cell<f32>,
 
@@ -54,6 +56,7 @@ impl EventSystem {
             event_pump: RefCell::new(sdl2_context.event_pump()?),
             mouse: sdl2_context.mouse(),
             controller_subsystem: sdl2_context.game_controller()?,
+            event_subsystem: sdl2_context.event()?,
 
             controller_axis_deadzone: Cell::new(0.25),
 
@@ -144,6 +147,12 @@ impl EventSystem {
 
     pub fn set_controller_axis_deadzone(&self, deadzone: f32) {
         self.controller_axis_deadzone.set(deadzone);
+    }
+
+    pub fn quit(&self) -> VerboseResult<()> {
+        Ok(self
+            .event_subsystem
+            .push_event(Event::Quit { timestamp: 0 })?)
     }
 
     pub fn poll_events(&self) -> VerboseResult<bool> {
