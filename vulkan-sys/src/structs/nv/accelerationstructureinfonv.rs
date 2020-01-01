@@ -48,3 +48,6 @@ impl VkAccelerationStructureInfoNV {
         }
     }
 }
+
+unsafe impl Sync for VkAccelerationStructureInfoNV {}
+unsafe impl Send for VkAccelerationStructureInfoNV {}

@@ -14,12 +14,14 @@ use sdl2::Sdl;
 use utilities::prelude::*;
 use vulkan_rs::prelude::*;
 
-use std::cell::Cell;
 use std::error::Error;
 use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicI32, AtomicU32, Ordering::SeqCst},
+    Arc, Mutex,
+};
 
 const SDL_SYSWM_WINDOWS: u32 = 0x1;
 const SDL_SYSWM_X11: u32 = 0x2;
@@ -62,10 +64,10 @@ pub struct Display {
 
 #[derive(Default, Debug)]
 struct CellRect {
-    x: Cell<i32>,
-    y: Cell<i32>,
-    width: Cell<u32>,
-    height: Cell<u32>,
+    x: AtomicI32,
+    y: AtomicI32,
+    width: AtomicU32,
+    height: AtomicU32,
 }
 
 impl CellRect {
@@ -73,17 +75,17 @@ impl CellRect {
         let (w, h) = window.size();
         let (x, y) = window.position();
 
-        self.x.set(x);
-        self.y.set(y);
-        self.width.set(w);
-        self.height.set(h);
+        self.x.store(x, SeqCst);
+        self.y.store(y, SeqCst);
+        self.width.store(w, SeqCst);
+        self.height.store(h, SeqCst);
     }
 
     fn update_to_window(&self, window: &mut sdl2::video::Window) -> VerboseResult<()> {
-        set_window_size(window, self.width.get(), self.height.get())?;
+        set_window_size(window, self.width.load(SeqCst), self.height.load(SeqCst))?;
         window.set_position(
-            WindowPos::Positioned(self.x.get()),
-            WindowPos::Positioned(self.y.get()),
+            WindowPos::Positioned(self.x.load(SeqCst)),
+            WindowPos::Positioned(self.y.load(SeqCst)),
         );
 
         Ok(())
@@ -92,7 +94,7 @@ impl CellRect {
 
 pub struct WindowSystemIntegration {
     // sdl
-    _video_subsystem: sdl2::VideoSubsystem,
+    _video_subsystem: Mutex<sdl2::VideoSubsystem>,
     window: Mutex<sdl2::video::Window>,
 
     cursor: Mutex<Option<Cursor>>,
@@ -198,7 +200,7 @@ impl WindowSystemIntegration {
         rect.update_from_window(&window);
 
         let wsi = WindowSystemIntegration {
-            _video_subsystem: video_subsystem,
+            _video_subsystem: Mutex::new(video_subsystem),
             window: Mutex::new(window),
 
             cursor: Mutex::new(None),

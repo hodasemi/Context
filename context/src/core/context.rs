@@ -11,12 +11,11 @@ use crate::prelude::*;
 
 use presentation::{input::eventsystem::PresentationEventType, prelude::*};
 
-use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::HashMap;
 use std::env::set_var;
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex, MutexGuard, RwLock};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard};
 use std::time::Instant;
 
 pub trait ContextObject {
@@ -39,11 +38,11 @@ pub struct Context {
 
     application_start_time: Instant,
 
-    context_object: RwLock<Option<Arc<dyn ContextObject>>>,
+    context_object: RwLock<Option<Arc<dyn ContextObject + Send + Sync>>>,
 
-    fallback: Mutex<Option<Box<dyn Fn(&str) -> VerboseResult<()>>>>,
+    fallback: Mutex<Option<Box<dyn Fn(&str) -> VerboseResult<()> + Send + Sync>>>,
 
-    push_events: Mutex<Vec<Box<dyn FnOnce() -> VerboseResult<()>>>>,
+    push_events: Mutex<Vec<Box<dyn FnOnce() -> VerboseResult<()> + Send + Sync>>>,
 }
 
 impl Context {
@@ -53,7 +52,7 @@ impl Context {
 
     pub fn set_context_object(
         &self,
-        context_object: Option<Arc<dyn ContextObject>>,
+        context_object: Option<Arc<dyn ContextObject + Send + Sync>>,
     ) -> VerboseResult<()> {
         *self.context_object.write()? = context_object;
 
@@ -74,7 +73,7 @@ impl Context {
 
     pub fn push_event(
         &self,
-        event: impl FnOnce() -> VerboseResult<()> + 'static,
+        event: impl FnOnce() -> VerboseResult<()> + 'static + Send + Sync,
     ) -> VerboseResult<()> {
         self.push_events.lock()?.push(Box::new(event));
 
@@ -125,7 +124,7 @@ impl Context {
 
     pub fn set_fallback<F>(&self, fallback: F) -> VerboseResult<()>
     where
-        F: Fn(&str) -> VerboseResult<()> + 'static,
+        F: Fn(&str) -> VerboseResult<()> + 'static + Send + Sync,
     {
         *self.fallback.lock()? = Some(Box::new(fallback));
 
@@ -148,15 +147,15 @@ impl Context {
         self.application_start_time.elapsed().as_secs_f64()
     }
 
-    pub fn controllers(&self) -> VerboseResult<Ref<'_, Vec<Rc<RefCell<Controller>>>>> {
+    pub fn controllers(&self) -> VerboseResult<RwLockReadGuard<'_, Vec<Arc<RwLock<Controller>>>>> {
         self.presentation.event_system().controllers()
     }
 
-    pub fn active_controller(&self) -> VerboseResult<Option<Rc<RefCell<Controller>>>> {
+    pub fn active_controller(&self) -> VerboseResult<Option<Arc<RwLock<Controller>>>> {
         self.presentation.event_system().active_controller()
     }
 
-    pub fn set_active_controller(&self, controller: &Rc<RefCell<Controller>>) -> VerboseResult<()> {
+    pub fn set_active_controller(&self, controller: &Arc<RwLock<Controller>>) -> VerboseResult<()> {
         self.presentation
             .event_system()
             .set_active_controller(controller)

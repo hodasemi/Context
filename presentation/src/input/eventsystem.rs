@@ -10,8 +10,8 @@ use sdl2::Sdl;
 
 use utilities::prelude::*;
 
-use std::cell::{Cell, Ref, RefCell};
-use std::rc::Rc;
+use std::ops::Deref;
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard};
 
 use super::controller::Controller;
 use super::mousebutton::MouseButton;
@@ -29,41 +29,41 @@ pub enum PresentationEventType {
     KeyUp(Keycode),
 
     // controller events
-    ControllerAxis(Rc<RefCell<Controller>>),
+    ControllerAxis(Arc<RwLock<Controller>>),
     ControllerButtonDown(Button),
     ControllerButtonUp(Button),
-    ControllerAdded(Rc<RefCell<Controller>>),
-    ControllerRemoved(Rc<RefCell<Controller>>),
+    ControllerAdded(Arc<RwLock<Controller>>),
+    ControllerRemoved(Arc<RwLock<Controller>>),
 }
 
 pub struct EventSystem {
-    event_pump: RefCell<EventPump>,
-    mouse: MouseUtil,
-    controller_subsystem: GameControllerSubsystem,
-    event_subsystem: EventSubsystem,
+    event_pump: RwLock<EventPump>,
+    mouse: Mutex<MouseUtil>,
+    controller_subsystem: Mutex<GameControllerSubsystem>,
+    event_subsystem: Mutex<EventSubsystem>,
 
-    controller_axis_deadzone: Cell<f32>,
+    controller_axis_deadzone: RwLock<f32>,
 
-    selected_controller: RefCell<Option<Rc<RefCell<Controller>>>>,
-    connected_controllers: RefCell<Vec<Rc<RefCell<Controller>>>>,
+    selected_controller: RwLock<Option<Arc<RwLock<Controller>>>>,
+    connected_controllers: RwLock<Vec<Arc<RwLock<Controller>>>>,
 
-    event_callback: RefCell<Box<dyn Fn(PresentationEventType) -> VerboseResult<()>>>,
+    event_callback: RwLock<Box<dyn Fn(PresentationEventType) -> VerboseResult<()> + Send + Sync>>,
 }
 
 impl EventSystem {
     pub fn new(sdl2_context: &Sdl) -> VerboseResult<EventSystem> {
         let event_system = EventSystem {
-            event_pump: RefCell::new(sdl2_context.event_pump()?),
-            mouse: sdl2_context.mouse(),
-            controller_subsystem: sdl2_context.game_controller()?,
-            event_subsystem: sdl2_context.event()?,
+            event_pump: RwLock::new(sdl2_context.event_pump()?),
+            mouse: Mutex::new(sdl2_context.mouse()),
+            controller_subsystem: Mutex::new(sdl2_context.game_controller()?),
+            event_subsystem: Mutex::new(sdl2_context.event()?),
 
-            controller_axis_deadzone: Cell::new(0.25),
+            controller_axis_deadzone: RwLock::new(0.25),
 
-            selected_controller: RefCell::new(None),
-            connected_controllers: RefCell::new(Vec::new()),
+            selected_controller: RwLock::new(None),
+            connected_controllers: RwLock::new(Vec::new()),
 
-            event_callback: RefCell::new(Box::new(move |_| Ok(()))),
+            event_callback: RwLock::new(Box::new(move |_| Ok(()))),
         };
 
         event_system.disable_mouse()?;
@@ -75,39 +75,39 @@ impl EventSystem {
 
     pub fn set_callback<F>(&self, f: F) -> VerboseResult<()>
     where
-        F: Fn(PresentationEventType) -> VerboseResult<()> + 'static,
+        F: Fn(PresentationEventType) -> VerboseResult<()> + 'static + Send + Sync,
     {
-        *self.event_callback.try_borrow_mut()? = Box::new(f);
+        *self.event_callback.write()? = Box::new(f);
 
         Ok(())
     }
 
     pub fn enable_mouse(&self) -> VerboseResult<()> {
-        let mut event_pump = self.event_pump.try_borrow_mut()?;
+        let mut event_pump = self.event_pump.write()?;
 
         event_pump.enable_event(SdlEventType::MouseMotion);
         event_pump.enable_event(SdlEventType::MouseButtonDown);
         event_pump.enable_event(SdlEventType::MouseButtonUp);
 
-        self.mouse.show_cursor(true);
+        self.mouse.lock()?.show_cursor(true);
 
         Ok(())
     }
 
     pub fn disable_mouse(&self) -> VerboseResult<()> {
-        let mut event_pump = self.event_pump.try_borrow_mut()?;
+        let mut event_pump = self.event_pump.write()?;
 
         event_pump.disable_event(SdlEventType::MouseMotion);
         event_pump.disable_event(SdlEventType::MouseButtonDown);
         event_pump.disable_event(SdlEventType::MouseButtonUp);
 
-        self.mouse.show_cursor(false);
+        self.mouse.lock()?.show_cursor(false);
 
         Ok(())
     }
 
     pub fn enable_keyboard(&self) -> VerboseResult<()> {
-        let mut event_pump = self.event_pump.try_borrow_mut()?;
+        let mut event_pump = self.event_pump.write()?;
 
         event_pump.enable_event(SdlEventType::KeyUp);
         event_pump.enable_event(SdlEventType::KeyDown);
@@ -116,7 +116,7 @@ impl EventSystem {
     }
 
     pub fn disable_keyboard(&self) -> VerboseResult<()> {
-        let mut event_pump = self.event_pump.try_borrow_mut()?;
+        let mut event_pump = self.event_pump.write()?;
 
         event_pump.disable_event(SdlEventType::KeyUp);
 
@@ -126,7 +126,7 @@ impl EventSystem {
     }
 
     pub fn enable_controller(&self) -> VerboseResult<()> {
-        let mut event_pump = self.event_pump.try_borrow_mut()?;
+        let mut event_pump = self.event_pump.write()?;
 
         event_pump.enable_event(SdlEventType::ControllerAxisMotion);
         event_pump.enable_event(SdlEventType::ControllerButtonDown);
@@ -136,7 +136,7 @@ impl EventSystem {
     }
 
     pub fn disable_controller(&self) -> VerboseResult<()> {
-        let mut event_pump = self.event_pump.try_borrow_mut()?;
+        let mut event_pump = self.event_pump.write()?;
 
         event_pump.disable_event(SdlEventType::ControllerAxisMotion);
         event_pump.disable_event(SdlEventType::ControllerButtonDown);
@@ -145,26 +145,29 @@ impl EventSystem {
         Ok(())
     }
 
-    pub fn set_controller_axis_deadzone(&self, deadzone: f32) {
-        self.controller_axis_deadzone.set(deadzone);
+    pub fn set_controller_axis_deadzone(&self, deadzone: f32) -> VerboseResult<()> {
+        *self.controller_axis_deadzone.write()? = deadzone;
+
+        Ok(())
     }
 
     pub fn quit(&self) -> VerboseResult<()> {
         Ok(self
             .event_subsystem
+            .lock()?
             .push_event(Event::Quit { timestamp: 0 })?)
     }
 
     pub fn poll_events(&self) -> VerboseResult<bool> {
         let mut controller_axis_changed = false;
-        let mut event_pump = self.event_pump.try_borrow_mut()?;
+        let mut event_pump = self.event_pump.write()?;
 
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => return Ok(false),
                 // ----------------- Mouse Events ---------------------
                 Event::MouseMotion { x, y, .. } => {
-                    self.event_callback.try_borrow()?(PresentationEventType::MouseMotion(
+                    self.event_callback.read()?(PresentationEventType::MouseMotion(
                         x as u32, y as u32,
                     ))?;
                 }
@@ -178,7 +181,7 @@ impl EventSystem {
                         SdlMouseButton::Unknown => continue,
                     };
 
-                    self.event_callback.try_borrow()?(PresentationEventType::MouseButtonDown(
+                    self.event_callback.read()?(PresentationEventType::MouseButtonDown(
                         mouse_button,
                     ))?;
                 }
@@ -192,7 +195,7 @@ impl EventSystem {
                         SdlMouseButton::Unknown => continue,
                     };
 
-                    self.event_callback.try_borrow()?(PresentationEventType::MouseButtonUp(
+                    self.event_callback.read()?(PresentationEventType::MouseButtonUp(
                         mouse_button,
                     ))?;
                 }
@@ -208,7 +211,7 @@ impl EventSystem {
                     }
 
                     if let Some(keycode) = keycode {
-                        self.event_callback.try_borrow()?(PresentationEventType::KeyDown(keycode))?;
+                        self.event_callback.read()?(PresentationEventType::KeyDown(keycode))?;
                     }
                 }
                 Event::KeyUp {
@@ -219,60 +222,55 @@ impl EventSystem {
                     }
 
                     if let Some(keycode) = keycode {
-                        self.event_callback.try_borrow()?(PresentationEventType::KeyUp(keycode))?;
+                        self.event_callback.read()?(PresentationEventType::KeyUp(keycode))?;
                     }
                 }
 
                 // --------------- Controller Events -------------------
                 Event::ControllerDeviceAdded { which, .. } => {
                     if let Ok(controller) = Controller::new(
-                        &self.controller_subsystem,
+                        self.controller_subsystem.lock()?.deref(),
                         which as u32,
-                        self.controller_axis_deadzone.get(),
+                        self.controller_axis_deadzone.read()?.clone(),
                     ) {
                         let controller = {
-                            let mut connected_controllers =
-                                self.connected_controllers.try_borrow_mut()?;
+                            let mut connected_controllers = self.connected_controllers.write()?;
 
-                            let mut selected_controller =
-                                self.selected_controller.try_borrow_mut()?;
+                            let mut selected_controller = self.selected_controller.write()?;
 
-                            let rc_controller = Rc::new(RefCell::new(controller));
+                            let arc_controller = Arc::new(RwLock::new(controller));
 
-                            connected_controllers.push(rc_controller.clone());
+                            connected_controllers.push(arc_controller.clone());
 
                             if selected_controller.is_none() {
-                                *selected_controller = Some(rc_controller.clone());
+                                *selected_controller = Some(arc_controller.clone());
                             }
 
-                            rc_controller
+                            arc_controller
                         };
 
-                        self.event_callback.try_borrow()?(PresentationEventType::ControllerAdded(
+                        self.event_callback.read()?(PresentationEventType::ControllerAdded(
                             controller,
                         ))?;
                     }
                 }
                 Event::ControllerDeviceRemoved { which, .. } => {
                     let removed_controller = {
-                        let mut selected_controller = self.selected_controller.try_borrow_mut()?;
+                        let mut selected_controller = self.selected_controller.write()?;
 
                         if selected_controller.is_some() {
                             // unwrap is save since we just tested for `is_some()`
-                            if selected_controller.as_ref().unwrap().try_borrow()?.id() as i32
-                                == which
-                            {
+                            if selected_controller.as_ref().unwrap().read()?.id() as i32 == which {
                                 *selected_controller = None;
                             }
                         }
 
-                        let mut connected_controllers =
-                            self.connected_controllers.try_borrow_mut()?;
+                        let mut connected_controllers = self.connected_controllers.write()?;
 
                         let mut remove_index = 0;
 
                         for (i, controller_cell) in connected_controllers.iter().enumerate() {
-                            let controller = controller_cell.try_borrow()?;
+                            let controller = controller_cell.read()?;
                             if controller.id() as i32 == which {
                                 remove_index = i;
                                 break;
@@ -289,49 +287,47 @@ impl EventSystem {
                         removed_controller
                     };
 
-                    self.event_callback.try_borrow()?(PresentationEventType::ControllerRemoved(
+                    self.event_callback.read()?(PresentationEventType::ControllerRemoved(
                         removed_controller,
                     ))?;
                 }
                 // maybe make use of `which`, for support of multiple controllers
                 Event::ControllerButtonDown { button, which, .. } => {
                     // only call back if the selected controller pressed a button
-                    match self.selected_controller.try_borrow()?.as_ref() {
+                    match self.selected_controller.read()?.as_ref() {
                         Some(selected_controller) => {
-                            if selected_controller.try_borrow()?.id() as i32 != which {
+                            if selected_controller.read()?.id() as i32 != which {
                                 continue;
                             }
                         }
                         None => continue,
                     }
 
-                    self.event_callback.try_borrow()?(
-                        PresentationEventType::ControllerButtonDown(button),
-                    )?;
+                    self.event_callback.read()?(PresentationEventType::ControllerButtonDown(
+                        button,
+                    ))?;
                 }
                 // maybe make use of `which`, for support of multiple controllers
                 Event::ControllerButtonUp { button, which, .. } => {
                     // only call back if the selected controller released a button
-                    match self.selected_controller.try_borrow()?.as_ref() {
+                    match self.selected_controller.read()?.as_ref() {
                         Some(selected_controller) => {
-                            if selected_controller.try_borrow()?.id() as i32 != which {
+                            if selected_controller.read()?.id() as i32 != which {
                                 continue;
                             }
                         }
                         None => continue,
                     }
 
-                    self.event_callback.try_borrow()?(PresentationEventType::ControllerButtonUp(
-                        button,
-                    ))?;
+                    self.event_callback.read()?(PresentationEventType::ControllerButtonUp(button))?;
                 }
                 Event::ControllerAxisMotion {
                     axis, value, which, ..
                 } => {
-                    let mut selected_controller = self.selected_controller.try_borrow_mut()?;
+                    let mut selected_controller = self.selected_controller.write()?;
 
                     if let Some(controller) = selected_controller.as_mut() {
-                        let mut controller = controller.try_borrow_mut()?;
+                        let mut controller = controller.write()?;
 
                         // only update axis, when selected controller made the change
                         if controller.id() as i32 != which {
@@ -370,8 +366,8 @@ impl EventSystem {
         }
 
         if controller_axis_changed {
-            if let Some(controller) = self.selected_controller.try_borrow()?.as_ref() {
-                self.event_callback.try_borrow()?(PresentationEventType::ControllerAxis(
+            if let Some(controller) = self.selected_controller.read()?.as_ref() {
+                self.event_callback.read()?(PresentationEventType::ControllerAxis(
                     controller.clone(),
                 ))?;
             }
@@ -380,24 +376,27 @@ impl EventSystem {
         Ok(true)
     }
 
-    pub fn controllers(&self) -> VerboseResult<Ref<'_, Vec<Rc<RefCell<Controller>>>>> {
-        Ok(self.connected_controllers.try_borrow()?)
+    pub fn controllers(&self) -> VerboseResult<RwLockReadGuard<'_, Vec<Arc<RwLock<Controller>>>>> {
+        Ok(self.connected_controllers.read()?)
     }
 
-    pub fn active_controller(&self) -> VerboseResult<Option<Rc<RefCell<Controller>>>> {
-        Ok(self.selected_controller.try_borrow()?.clone())
+    pub fn active_controller(&self) -> VerboseResult<Option<Arc<RwLock<Controller>>>> {
+        Ok(self.selected_controller.read()?.clone())
     }
 
-    pub fn set_active_controller(&self, controller: &Rc<RefCell<Controller>>) -> VerboseResult<()> {
+    pub fn set_active_controller(&self, controller: &Arc<RwLock<Controller>>) -> VerboseResult<()> {
         if let Some(res) = self
             .connected_controllers
-            .try_borrow()?
+            .read()?
             .iter()
-            .find(|c| Rc::ptr_eq(c, controller))
+            .find(|c| Arc::ptr_eq(c, controller))
         {
-            *self.selected_controller.try_borrow_mut()? = Some(res.clone());
+            *self.selected_controller.write()? = Some(res.clone());
         }
 
         Ok(())
     }
 }
+
+unsafe impl Send for EventSystem {}
+unsafe impl Sync for EventSystem {}

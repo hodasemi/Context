@@ -159,3 +159,6 @@ impl std::fmt::Debug for Controller {
         )
     }
 }
+
+unsafe impl Send for Controller {}
+unsafe impl Sync for Controller {}

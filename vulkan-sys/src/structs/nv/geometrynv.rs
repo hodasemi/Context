@@ -27,3 +27,6 @@ impl VkGeometryNV {
         }
     }
 }
+
+unsafe impl Sync for VkGeometryNV {}
+unsafe impl Send for VkGeometryNV {}

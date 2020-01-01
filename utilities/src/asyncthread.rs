@@ -5,17 +5,16 @@ use crate::{
     errortype::{UtilError, VerboseResult},
 };
 
-use std::cell::RefCell;
-use std::sync::mpsc;
+use std::sync::{mpsc, RwLock};
 use std::thread;
 
 /// Asynchronous thread handle
-pub struct AsyncThread<T: Send + 'static> {
+pub struct AsyncThread<T: Send + Sync + 'static> {
     receiver: mpsc::Receiver<T>,
-    result: RefCell<Option<T>>,
+    result: RwLock<Option<T>>,
 }
 
-impl<T: Send + 'static> AsyncThread<T> {
+impl<T: Send + Sync + 'static> AsyncThread<T> {
     /// Spawns a thread
     ///
     /// # Arguments
@@ -36,7 +35,7 @@ impl<T: Send + 'static> AsyncThread<T> {
 
         AsyncThread {
             receiver,
-            result: RefCell::new(None),
+            result: RwLock::new(None),
         }
     }
 
@@ -44,7 +43,7 @@ impl<T: Send + 'static> AsyncThread<T> {
     /// Returns the Some(result) if the thread has finished its work,
     /// otherwise None
     pub fn check(&self) -> VerboseResult<bool> {
-        let mut result = self.result.try_borrow_mut()?;
+        let mut result = self.result.write()?;
 
         match result.as_ref() {
             Some(_) => Ok(true),
@@ -61,7 +60,7 @@ impl<T: Send + 'static> AsyncThread<T> {
 
     /// consumes the result
     pub fn take(&self) -> VerboseResult<T> {
-        let mut result = self.result.try_borrow_mut()?;
+        let mut result = self.result.write()?;
 
         if result.is_some() {
             // actually safe to not panic, since we just checked
@@ -74,12 +73,12 @@ impl<T: Send + 'static> AsyncThread<T> {
     }
 }
 
-impl<T: Send + 'static> AsyncThread<T>
+impl<T: Send + Sync + 'static> AsyncThread<T>
 where
     T: Clone,
 {
     pub fn get(&self) -> VerboseResult<T> {
-        let result = self.result.try_borrow()?;
+        let result = self.result.read()?;
 
         match result.as_ref() {
             Some(res) => Ok(res.clone()),

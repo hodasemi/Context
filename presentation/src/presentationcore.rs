@@ -164,3 +164,6 @@ impl std::fmt::Debug for PresentationCore {
         write!(f, "WindowSystemIntegration {{ sdl_context: SDL2, eventsystem: EventSystem, backend: {:#?} }}", self.backend)
     }
 }
+
+unsafe impl Send for PresentationCore {}
+unsafe impl Sync for PresentationCore {}
