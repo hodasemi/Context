@@ -260,11 +260,11 @@ impl RenderCore for OpenVRRenderCore {
     }
 
     // scene handling
-    fn add_scene(&self, scene: Arc<dyn TScene>) -> VerboseResult<()> {
+    fn add_scene(&self, scene: Arc<dyn TScene + Send + Sync>) -> VerboseResult<()> {
         self.render_backend.add_scene(scene)
     }
 
-    fn remove_scene(&self, scene: &Arc<dyn TScene>) -> VerboseResult<()> {
+    fn remove_scene(&self, scene: &Arc<dyn TScene + Send + Sync>) -> VerboseResult<()> {
         self.render_backend.remove_scene(scene)
     }
 
@@ -273,14 +273,17 @@ impl RenderCore for OpenVRRenderCore {
     }
 
     // post process handling
-    fn add_post_processing_routine(&self, post_process: Arc<dyn PostProcess>) -> VerboseResult<()> {
+    fn add_post_processing_routine(
+        &self,
+        post_process: Arc<dyn PostProcess + Send + Sync>,
+    ) -> VerboseResult<()> {
         self.render_backend
             .add_post_processing_routine(post_process)
     }
 
     fn remove_post_processing_routine(
         &self,
-        post_process: &Arc<dyn PostProcess>,
+        post_process: &Arc<dyn PostProcess + Send + Sync>,
     ) -> VerboseResult<()> {
         self.render_backend
             .remove_post_processing_routine(post_process)
@@ -295,7 +298,7 @@ impl RenderCore for OpenVRRenderCore {
         self.render_backend.image_count()
     }
 
-    fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
+    fn images(&self) -> VerboseResult<TargetMode<Vec<Arc<Image>>>> {
         self.render_backend.images()
     }
 
@@ -354,12 +357,12 @@ impl PostProcess for PostRenderLayoutBarrier {
         command_buffer.set_full_image_layout(
             &self.left_images[*left_index],
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        );
+        )?;
 
         command_buffer.set_full_image_layout(
             &self.right_images[*right_index],
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        );
+        )?;
 
         Ok(())
     }

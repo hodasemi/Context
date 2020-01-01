@@ -15,17 +15,16 @@ use super::openxrintegration::OpenXRIntegration;
 use utilities::prelude::*;
 use vulkan_rs::prelude::*;
 
-use std::cell::RefCell;
 use std::mem;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 pub struct OpenXRRenderCore {
     instance: Arc<OpenXRInstance>,
     session: Session<Vulkan>,
-    frame_waiter: RefCell<FrameWaiter>,
-    frame_stream: RefCell<FrameStream<Vulkan>>,
+    frame_waiter: RwLock<FrameWaiter>,
+    frame_stream: RwLock<FrameStream<Vulkan>>,
 
-    swapchains: RefCell<TargetMode<Swapchain<Vulkan>>>,
+    swapchains: RwLock<TargetMode<Swapchain<Vulkan>>>,
 
     render_backend: RenderBackend,
     render_fence: Arc<Fence>,
@@ -33,7 +32,7 @@ pub struct OpenXRRenderCore {
     format: VkFormat,
     width: u32,
     height: u32,
-    current_image_indices: RefCell<TargetMode<usize>>,
+    current_image_indices: RwLock<TargetMode<usize>>,
 
     space: Space,
     view_config_type: ViewConfigurationType,
@@ -147,10 +146,10 @@ impl OpenXRRenderCore {
         let openxr_render_core = OpenXRRenderCore {
             instance: xri.instance().clone(),
             session,
-            frame_waiter: RefCell::new(frame_waiter),
-            frame_stream: RefCell::new(frame_stream),
+            frame_waiter: RwLock::new(frame_waiter),
+            frame_stream: RwLock::new(frame_stream),
 
-            swapchains: RefCell::new(swapchains),
+            swapchains: RwLock::new(swapchains),
 
             render_backend,
             render_fence: Fence::builder().build(device.clone())?,
@@ -158,7 +157,7 @@ impl OpenXRRenderCore {
             format: VkFormat::from(format),
             width,
             height,
-            current_image_indices: RefCell::new(TargetMode::Stereo(0, 0)),
+            current_image_indices: RwLock::new(TargetMode::Stereo(0, 0)),
 
             space,
             view_config_type,
@@ -365,13 +364,13 @@ impl RenderCore for OpenXRRenderCore {
             return Ok(false);
         }
 
-        let state = p_try!(self.frame_waiter.try_borrow_mut()?.wait());
+        let state = p_try!(self.frame_waiter.write()?.wait());
         let predicted_display_time = state.predicted_display_time;
 
-        let mut frame_stream = self.frame_stream.try_borrow_mut()?;
+        let mut frame_stream = self.frame_stream.write()?;
         p_try!(frame_stream.begin());
 
-        let mut swapchains = self.swapchains.try_borrow_mut()?;
+        let mut swapchains = self.swapchains.write()?;
         let (left_eye_swapchain, right_eye_swapchain) = swapchains.stereo_mut()?;
 
         let (_, views) = p_try!(self.session.locate_views(
@@ -387,12 +386,12 @@ impl RenderCore for OpenXRRenderCore {
         p_try!(left_eye_swapchain.wait_image(Duration::INFINITE));
         p_try!(right_eye_swapchain.wait_image(Duration::INFINITE));
 
-        *self.current_image_indices.try_borrow_mut()? =
+        *self.current_image_indices.write()? =
             TargetMode::Stereo(left_eye_image_index, right_eye_image_index);
 
         if state.should_render {
             let command_buffer = self.render_backend.render(
-                self.current_image_indices.try_borrow()?.clone(),
+                self.current_image_indices.read()?.clone(),
                 Some(Self::setup_transformations(&views)?),
             )?;
 
@@ -461,11 +460,11 @@ impl RenderCore for OpenXRRenderCore {
     }
 
     // scene handling
-    fn add_scene(&self, scene: Arc<dyn TScene>) -> VerboseResult<()> {
+    fn add_scene(&self, scene: Arc<dyn TScene + Send + Sync>) -> VerboseResult<()> {
         self.render_backend.add_scene(scene)
     }
 
-    fn remove_scene(&self, scene: &Arc<dyn TScene>) -> VerboseResult<()> {
+    fn remove_scene(&self, scene: &Arc<dyn TScene + Send + Sync>) -> VerboseResult<()> {
         self.render_backend.remove_scene(scene)
     }
 
@@ -474,14 +473,17 @@ impl RenderCore for OpenXRRenderCore {
     }
 
     // post process handling
-    fn add_post_processing_routine(&self, post_process: Arc<dyn PostProcess>) -> VerboseResult<()> {
+    fn add_post_processing_routine(
+        &self,
+        post_process: Arc<dyn PostProcess + Send + Sync>,
+    ) -> VerboseResult<()> {
         self.render_backend
             .add_post_processing_routine(post_process)
     }
 
     fn remove_post_processing_routine(
         &self,
-        post_process: &Arc<dyn PostProcess>,
+        post_process: &Arc<dyn PostProcess + Send + Sync>,
     ) -> VerboseResult<()> {
         self.render_backend
             .remove_post_processing_routine(post_process)
@@ -496,7 +498,7 @@ impl RenderCore for OpenXRRenderCore {
         self.render_backend.image_count()
     }
 
-    fn images(&self) -> TargetMode<Vec<Arc<Image>>> {
+    fn images(&self) -> VerboseResult<TargetMode<Vec<Arc<Image>>>> {
         self.render_backend.images()
     }
 
