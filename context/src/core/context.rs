@@ -16,7 +16,7 @@ use std::env::set_var;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub trait ContextObject {
     fn name(&self) -> &str;
@@ -143,8 +143,8 @@ impl Context {
         self.core.queue()
     }
 
-    pub fn time(&self) -> f64 {
-        self.application_start_time.elapsed().as_secs_f64()
+    pub fn time(&self) -> Duration {
+        self.application_start_time.elapsed()
     }
 
     pub fn controllers(&self) -> VerboseResult<RwLockReadGuard<'_, Vec<Arc<RwLock<Controller>>>>> {
