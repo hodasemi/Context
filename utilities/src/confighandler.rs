@@ -140,7 +140,7 @@ impl ConfigHandler {
                         trimmed_value.remove(0);
                         trimmed_value.pop();
 
-                        let value_split = trimmed_value.split(';');
+                        let value_split = trimmed_value.split(',');
                         let mut value_array = Vec::new();
 
                         for v in value_split {

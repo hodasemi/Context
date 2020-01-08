@@ -121,6 +121,7 @@ impl Drop for ShaderModule {
     }
 }
 
+#[derive(Debug)]
 pub struct SpecializationConstants {
     map_entries: Vec<VkSpecializationMapEntry>,
     data: Box<dyn Any>,
