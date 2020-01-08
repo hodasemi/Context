@@ -3,6 +3,7 @@ use utilities::prelude::*;
 use crate::impl_vk_handle;
 use crate::prelude::*;
 
+use std::any::Any;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
@@ -117,5 +118,32 @@ impl_vk_handle!(ShaderModule, VkShaderModule, shader_module);
 impl Drop for ShaderModule {
     fn drop(&mut self) {
         self.device.destroy_shader_module(self.shader_module);
+    }
+}
+
+pub struct SpecializationConstants {
+    map_entries: Vec<VkSpecializationMapEntry>,
+    data: Box<dyn Any>,
+
+    vk_struct: VkSpecializationInfo,
+}
+
+impl SpecializationConstants {
+    pub fn new(data: Box<dyn Any>, map_entries: &[VkSpecializationMapEntry]) -> Self {
+        let mut me = SpecializationConstants {
+            map_entries: map_entries.iter().map(|m| m.clone()).collect(),
+            data,
+
+            vk_struct: VkSpecializationInfo::empty(),
+        };
+
+        me.vk_struct.set_map_entries(&me.map_entries);
+        me.vk_struct.set_data(&me.data);
+
+        me
+    }
+
+    pub(crate) fn vk_info(&self) -> &VkSpecializationInfo {
+        &self.vk_struct
     }
 }

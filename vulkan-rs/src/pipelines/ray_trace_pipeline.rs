@@ -7,7 +7,7 @@ use std::iter::IntoIterator;
 use std::sync::Arc;
 
 pub struct RayTracingPipelineBuilder {
-    shader_modules: Vec<Arc<ShaderModule>>,
+    shader_modules: Vec<(Arc<ShaderModule>, Option<SpecializationConstants>)>,
     shader_groups: Vec<VkRayTracingShaderGroupCreateInfoNV>,
     max_recursion_depth: u32,
     shader_binding_table_builder: ShaderBindingTableBuilder,
@@ -21,7 +21,12 @@ impl RayTracingPipelineBuilder {
     }
 
     // TODO: add support for specialization constants
-    pub fn add_shader(mut self, shader_module: Arc<ShaderModule>, data: Option<Vec<u8>>) -> Self {
+    pub fn add_shader(
+        mut self,
+        shader_module: Arc<ShaderModule>,
+        data: Option<Vec<u8>>,
+        specialization_constants: Option<SpecializationConstants>,
+    ) -> Self {
         self.shader_binding_table_builder = match shader_module.shader_type() {
             ShaderType::RayGeneration => self
                 .shader_binding_table_builder
@@ -36,7 +41,8 @@ impl RayTracingPipelineBuilder {
         };
 
         let shader_index = self.shader_modules.len();
-        self.shader_modules.push(shader_module);
+        self.shader_modules
+            .push((shader_module, specialization_constants));
 
         self.shader_groups
             .push(VkRayTracingShaderGroupCreateInfoNV::new(
@@ -55,6 +61,7 @@ impl RayTracingPipelineBuilder {
         mut self,
         shader_modules: impl IntoIterator<Item = &'a Arc<ShaderModule>>,
         data: Option<Vec<u8>>,
+        specialization_constants: impl IntoIterator<Item = Option<SpecializationConstants>>,
     ) -> Self {
         let mut group = VkRayTracingShaderGroupCreateInfoNV::new(
             VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_NV,
@@ -64,7 +71,9 @@ impl RayTracingPipelineBuilder {
             VK_SHADER_UNUSED_NV,
         );
 
-        for shader_module in shader_modules {
+        for (shader_module, specialization_constant) in
+            shader_modules.into_iter().zip(specialization_constants)
+        {
             let shader_index = self.shader_modules.len() as u32;
 
             match shader_module.shader_type() {
@@ -96,7 +105,8 @@ impl RayTracingPipelineBuilder {
                 _ => panic!("unsupported shader type: {:?}, expected AnyHit, ClosestHit or Intersection Shader", shader_module.shader_type()),
             }
 
-            self.shader_modules.push(shader_module.clone());
+            self.shader_modules
+                .push((shader_module.clone(), specialization_constant));
         }
         self.shader_binding_table_builder = self
             .shader_binding_table_builder
@@ -116,7 +126,14 @@ impl RayTracingPipelineBuilder {
         let shader_stages: Vec<VkPipelineShaderStageCreateInfo> = self
             .shader_modules
             .iter()
-            .map(|s| s.pipeline_stage_info())
+            .map(|(shader, specialization_constant)| {
+                let mut stage_info = shader.pipeline_stage_info();
+                if let Some(specialization_constant) = specialization_constant {
+                    stage_info.set_specialization_info(specialization_constant.vk_info());
+                }
+
+                stage_info
+            })
             .collect();
 
         // check that we dont exceed the gpu's capabilities

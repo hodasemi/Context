@@ -1,5 +1,5 @@
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VkSpecializationMapEntry {
     pub constantID: u32,
     pub offset: u32,

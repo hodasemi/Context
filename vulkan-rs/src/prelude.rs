@@ -21,7 +21,7 @@ pub use super::querypool::QueryPool;
 pub use super::queue::*;
 pub use super::renderpass::RenderPass;
 pub use super::semaphore::Semaphore;
-pub use super::shadermodule::{ShaderModule, ShaderType};
+pub use super::shadermodule::{ShaderModule, ShaderType, SpecializationConstants};
 pub use super::surface::Surface;
 pub use super::swapchain::Swapchain;
 
