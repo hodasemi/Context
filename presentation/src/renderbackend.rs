@@ -66,6 +66,18 @@ pub struct VRTransformations {
     pub view: Matrix4<f32>,
 }
 
+impl VRTransformations {
+    pub fn invert(self) -> VerboseResult<Self> {
+        Ok(VRTransformations {
+            proj: self
+                .proj
+                .invert()
+                .ok_or("could not invert projection matrix")?,
+            view: self.view.invert().ok_or("could not invert view matrix")?,
+        })
+    }
+}
+
 impl Default for VRTransformations {
     fn default() -> Self {
         VRTransformations {
