@@ -14,7 +14,7 @@ use super::openvrintegration::OpenVRIntegration;
 use crate::{p_try, prelude::*, renderbackend::RenderBackend};
 
 use std::mem::transmute;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 pub struct OpenVRRenderCore {
     compositor: Arc<Compositor>,
@@ -28,6 +28,7 @@ pub struct OpenVRRenderCore {
 
     current_image_indices: TargetMode<usize>,
     images: TargetMode<Vec<Arc<Image>>>,
+    transformations: RwLock<(VRTransformations, VRTransformations)>,
 
     width: u32,
     height: u32,
@@ -61,6 +62,10 @@ impl OpenVRRenderCore {
 
             current_image_indices: TargetMode::Stereo(0, 0),
             images,
+            transformations: RwLock::new((
+                VRTransformations::default(),
+                VRTransformations::default(),
+            )),
 
             width,
             height,
@@ -170,13 +175,13 @@ impl OpenVRRenderCore {
     fn setup_transformations(
         system: &System,
         wait_poses: WaitPoses,
-    ) -> TargetMode<VRTransformations> {
+    ) -> (VRTransformations, VRTransformations) {
         let pose = Self::find_tracked_hmd(system, wait_poses.render);
 
         let left = Self::vr_transform(system, OpenVREye::Left, pose);
         let right = Self::vr_transform(system, OpenVREye::Right, pose);
 
-        TargetMode::Stereo(left, right)
+        (left, right)
     }
 
     #[inline]
@@ -230,11 +235,11 @@ impl RenderCore for OpenVRRenderCore {
     fn next_frame(&self) -> VerboseResult<bool> {
         let wait_poses = p_try!(self.compositor.wait_get_poses());
 
-        let transforms = Self::setup_transformations(&self.system, wait_poses);
+        *self.transformations.write()? = Self::setup_transformations(&self.system, wait_poses);
 
         let command_buffer = self
             .render_backend
-            .render(self.current_image_indices.clone(), Some(transforms))?;
+            .render(self.current_image_indices.clone())?;
 
         let submits = &[SubmitInfo::default().add_command_buffer(&command_buffer)];
 
@@ -257,6 +262,10 @@ impl RenderCore for OpenVRRenderCore {
         self.submit_right(&right_images[*right_index])?;
 
         Ok(true)
+    }
+
+    fn set_clear_color(&self, color: [f32; 4]) -> VerboseResult<()> {
+        self.render_backend.set_clear_color(color)
     }
 
     // scene handling
@@ -316,6 +325,10 @@ impl RenderCore for OpenVRRenderCore {
 
     fn height(&self) -> u32 {
         self.height
+    }
+
+    fn transformations(&self) -> VerboseResult<Option<(VRTransformations, VRTransformations)>> {
+        Ok(Some(self.transformations.read()?.clone()))
     }
 }
 

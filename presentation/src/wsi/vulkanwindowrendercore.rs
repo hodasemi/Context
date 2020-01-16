@@ -165,10 +165,9 @@ impl RenderCore for VulkanWindowRenderCore {
     fn next_frame(&self) -> VerboseResult<bool> {
         self.aquire_next_image_index()?;
 
-        let command_buffer = self.render_backend.render(
-            TargetMode::Single(self.current_image_index.load(SeqCst)),
-            None,
-        )?;
+        let command_buffer = self
+            .render_backend
+            .render(TargetMode::Single(self.current_image_index.load(SeqCst)))?;
 
         let submits = &[SubmitInfo::default()
             .add_wait_semaphore(&self.image_available_sem)
@@ -199,6 +198,10 @@ impl RenderCore for VulkanWindowRenderCore {
         self.render_fence.reset();
 
         Ok(true)
+    }
+
+    fn set_clear_color(&self, color: [f32; 4]) -> VerboseResult<()> {
+        self.render_backend.set_clear_color(color)
     }
 
     // scene handling
@@ -258,6 +261,10 @@ impl RenderCore for VulkanWindowRenderCore {
 
     fn height(&self) -> u32 {
         self.swapchain.height()
+    }
+
+    fn transformations(&self) -> VerboseResult<Option<(VRTransformations, VRTransformations)>> {
+        Ok(None)
     }
 }
 

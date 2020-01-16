@@ -33,6 +33,7 @@ pub struct OpenXRRenderCore {
     width: u32,
     height: u32,
     current_image_indices: RwLock<TargetMode<usize>>,
+    transformations: RwLock<(VRTransformations, VRTransformations)>,
 
     space: Space,
     view_config_type: ViewConfigurationType,
@@ -158,6 +159,10 @@ impl OpenXRRenderCore {
             width,
             height,
             current_image_indices: RwLock::new(TargetMode::Stereo(0, 0)),
+            transformations: RwLock::new((
+                VRTransformations::default(),
+                VRTransformations::default(),
+            )),
 
             space,
             view_config_type,
@@ -253,7 +258,9 @@ impl OpenXRRenderCore {
         Ok(p_try!(session.create_reference_space(space_type, identity)))
     }
 
-    fn setup_transformations(views: &[View]) -> VerboseResult<TargetMode<VRTransformations>> {
+    fn setup_transformations(
+        views: &[View],
+    ) -> VerboseResult<(VRTransformations, VRTransformations)> {
         // only support stereo
         debug_assert!(views.len() == 2);
 
@@ -267,7 +274,7 @@ impl OpenXRRenderCore {
             view: Self::view_from_pose(&views[1])?,
         };
 
-        Ok(TargetMode::Stereo(left, right))
+        Ok((left, right))
     }
 
     fn proj_from_fov(view: &View, far_z: f32, near_z: f32) -> Matrix4<f32> {
@@ -379,6 +386,8 @@ impl RenderCore for OpenXRRenderCore {
             &self.space
         ));
 
+        *self.transformations.write()? = Self::setup_transformations(&views)?;
+
         let left_eye_image_index = p_try!(left_eye_swapchain.acquire_image()) as usize;
         let right_eye_image_index = p_try!(right_eye_swapchain.acquire_image()) as usize;
 
@@ -390,10 +399,9 @@ impl RenderCore for OpenXRRenderCore {
             TargetMode::Stereo(left_eye_image_index, right_eye_image_index);
 
         if state.should_render {
-            let command_buffer = self.render_backend.render(
-                self.current_image_indices.read()?.clone(),
-                Some(Self::setup_transformations(&views)?),
-            )?;
+            let command_buffer = self
+                .render_backend
+                .render(self.current_image_indices.read()?.clone())?;
 
             let submits = &[SubmitInfo::default()
                 .add_command_buffer(command_buffer)
@@ -459,6 +467,10 @@ impl RenderCore for OpenXRRenderCore {
         Ok(true)
     }
 
+    fn set_clear_color(&self, color: [f32; 4]) -> VerboseResult<()> {
+        self.render_backend.set_clear_color(color)
+    }
+
     // scene handling
     fn add_scene(&self, scene: Arc<dyn TScene + Send + Sync>) -> VerboseResult<()> {
         self.render_backend.add_scene(scene)
@@ -516,6 +528,10 @@ impl RenderCore for OpenXRRenderCore {
 
     fn height(&self) -> u32 {
         self.height
+    }
+
+    fn transformations(&self) -> VerboseResult<Option<(VRTransformations, VRTransformations)>> {
+        Ok(Some(self.transformations.read()?.clone()))
     }
 }
 

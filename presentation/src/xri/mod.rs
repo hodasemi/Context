@@ -80,6 +80,10 @@ pub mod openxrrendercore {
             unimplemented!()
         }
 
+        fn set_clear_color(&self, _: [f32; 4]) -> VerboseResult<()> {
+            unimplemented!()
+        }
+
         // scene handling
         fn add_scene(&self, _: Arc<dyn TScene + Sync + Send>) -> VerboseResult<()> {
             unimplemented!()
@@ -134,6 +138,10 @@ pub mod openxrrendercore {
         }
 
         fn height(&self) -> u32 {
+            unimplemented!()
+        }
+
+        fn transformations(&self) -> VerboseResult<Option<(VRTransformations, VRTransformations)>> {
             unimplemented!()
         }
     }

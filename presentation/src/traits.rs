@@ -11,7 +11,6 @@ pub trait TScene {
         &self,
         command_buffer: &Arc<CommandBuffer>,
         indices: &TargetMode<usize>,
-        vr_data: &Option<TargetMode<VRTransformations>>,
     ) -> VerboseResult<()>;
     fn resize(&self) -> VerboseResult<()>;
 }
@@ -36,6 +35,8 @@ pub trait RenderCore: std::fmt::Debug {
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     }
 
+    fn set_clear_color(&self, color: [f32; 4]) -> VerboseResult<()>;
+
     // scene handling
     fn add_scene(&self, scene: Arc<dyn TScene + Sync + Send>) -> VerboseResult<()>;
     fn remove_scene(&self, scene: &Arc<dyn TScene + Sync + Send>) -> VerboseResult<()>;
@@ -59,4 +60,5 @@ pub trait RenderCore: std::fmt::Debug {
     fn allocate_secondary_buffer(&self) -> VerboseResult<Arc<CommandBuffer>>;
     fn width(&self) -> u32;
     fn height(&self) -> u32;
+    fn transformations(&self) -> VerboseResult<Option<(VRTransformations, VRTransformations)>>;
 }

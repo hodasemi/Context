@@ -1,13 +1,13 @@
 use crate::prelude::*;
 
-use cgmath::Matrix4;
+use cgmath::{Matrix4, SquareMatrix};
 use utilities::prelude::*;
 use vulkan_rs::prelude::*;
 
 use std::ops::Deref;
 use std::sync::{
     atomic::{AtomicUsize, Ordering::SeqCst},
-    Arc, Mutex,
+    Arc, Mutex, RwLock,
 };
 
 pub enum TargetMode<T> {
@@ -66,6 +66,15 @@ pub struct VRTransformations {
     pub view: Matrix4<f32>,
 }
 
+impl Default for VRTransformations {
+    fn default() -> Self {
+        VRTransformations {
+            proj: Matrix4::identity(),
+            view: Matrix4::identity(),
+        }
+    }
+}
+
 pub struct RenderBackend {
     device: Arc<Device>,
     queue: Arc<Mutex<Queue>>,
@@ -73,6 +82,8 @@ pub struct RenderBackend {
     // driver provided images
     swapchain_images: Mutex<TargetMode<Vec<Arc<Image>>>>,
     image_count: AtomicUsize,
+
+    clear_color: RwLock<VkClearColorValue>,
 
     cmd_pool: Arc<CommandPool>,
     command_buffer: Arc<CommandBuffer>,
@@ -114,6 +125,8 @@ impl RenderBackend {
             swapchain_images: Mutex::new(images),
             image_count: AtomicUsize::new(image_count),
 
+            clear_color: RwLock::new(VkClearColorValue::float32([0.0, 0.0, 0.0, 1.0])),
+
             cmd_pool: command_pool,
             command_buffer,
 
@@ -132,11 +145,13 @@ impl RenderBackend {
         &self.queue
     }
 
-    pub fn render(
-        &self,
-        image_indices: TargetMode<usize>,
-        vr_data: Option<TargetMode<VRTransformations>>,
-    ) -> VerboseResult<Arc<CommandBuffer>> {
+    pub fn set_clear_color(&self, clear_color: [f32; 4]) -> VerboseResult<()> {
+        *self.clear_color.write()? = VkClearColorValue::float32(clear_color);
+
+        Ok(())
+    }
+
+    pub fn render(&self, image_indices: TargetMode<usize>) -> VerboseResult<Arc<CommandBuffer>> {
         let scenes = self.scenes.lock()?;
 
         // update scenes
@@ -153,6 +168,7 @@ impl RenderBackend {
         {
             let swapchain_images = self.swapchain_images.lock()?;
             let target_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            let clear_color = self.clear_color.read()?.clone();
 
             match (&image_indices, swapchain_images.deref()) {
                 (TargetMode::Single(image_index), TargetMode::Single(images)) => {
@@ -161,7 +177,7 @@ impl RenderBackend {
                     Self::clear_image(
                         &self.command_buffer,
                         swapchain_image,
-                        VkClearColorValue::float32([0.0, 0.0, 0.0, 1.0]),
+                        clear_color,
                         target_layout,
                     )?;
                 }
@@ -175,14 +191,14 @@ impl RenderBackend {
                     Self::clear_image(
                         &self.command_buffer,
                         left_image,
-                        VkClearColorValue::float32([1.0, 0.0, 0.0, 1.0]),
+                        clear_color.clone(),
                         target_layout,
                     )?;
 
                     Self::clear_image(
                         &self.command_buffer,
                         right_image,
-                        VkClearColorValue::float32([0.0, 1.0, 0.0, 1.0]),
+                        clear_color,
                         target_layout,
                     )?;
                 }
@@ -192,7 +208,7 @@ impl RenderBackend {
 
         // make a call to the connected scenes
         for scene in scenes.iter() {
-            scene.process(&self.command_buffer, &image_indices, &vr_data)?;
+            scene.process(&self.command_buffer, &image_indices)?;
         }
 
         // post processing
