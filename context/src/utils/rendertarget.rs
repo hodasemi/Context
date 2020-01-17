@@ -36,7 +36,8 @@ pub struct RenderTargetBuilder<'a> {
 
     target_infos: Vec<CustomTarget>,
 
-    prepared_targets: Option<(&'a [Arc<Image>], usize, [f32; 4])>,
+    // (images, index, clear_color, clear_on_load)
+    prepared_targets: Option<(&'a [Arc<Image>], usize, [f32; 4], bool)>,
     resolve_targets: Option<&'a [Arc<Image>]>,
 }
 
@@ -58,8 +59,14 @@ impl<'a> RenderTargetBuilder<'a> {
         prepared_targets: &'a [Arc<Image>],
         target_index: usize,
         clear_color: impl Into<[f32; 4]>,
+        clear_on_load: bool,
     ) -> Self {
-        self.prepared_targets = Some((prepared_targets, target_index, clear_color.into()));
+        self.prepared_targets = Some((
+            prepared_targets,
+            target_index,
+            clear_color.into(),
+            clear_on_load,
+        ));
 
         self
     }
@@ -81,7 +88,7 @@ impl<'a> RenderTargetBuilder<'a> {
         let mut framebuffers = Vec::new();
 
         match (self.resolve_targets, self.prepared_targets) {
-            (Some(resolve_targets), Some((prepared_targets, index, _))) => {
+            (Some(resolve_targets), Some((prepared_targets, index, _, _))) => {
                 debug_assert!(prepared_targets.len() == resolve_targets.len());
 
                 for (i, resolve_target) in resolve_targets.iter().enumerate() {
@@ -122,7 +129,7 @@ impl<'a> RenderTargetBuilder<'a> {
                     framebuffers.push(framebuffer);
                 }
             }
-            (None, Some((prepared_targets, index, _))) => {
+            (None, Some((prepared_targets, index, _, _))) => {
                 for prepared_target in prepared_targets {
                     let ref_images = Self::insert_prepared_target(&images, &prepared_target, index);
 
@@ -276,17 +283,21 @@ impl<'a> RenderTargetBuilder<'a> {
 
         for (i, target_info) in self.target_infos.iter().enumerate() {
             // check for prepared images and their index
-            if let Some((prepared_images, index, clear_color)) = self.prepared_targets {
+            if let Some((prepared_images, index, clear_color, clear_on_load)) =
+                self.prepared_targets
+            {
                 if i == index {
                     // assume prepared images are always color attachments
                     clear_values.push(VkClearValue::color(VkClearColorValue::float32(clear_color)));
+
+                    let clear_operation = Self::clear_op(clear_on_load);
 
                     // add color attachment
                     attachments.push(VkAttachmentDescription::new(
                         0,
                         prepared_images[0].vk_format(),
                         VK_SAMPLE_COUNT_1_BIT,
-                        VK_ATTACHMENT_LOAD_OP_CLEAR,
+                        clear_operation,
                         VK_ATTACHMENT_STORE_OP_STORE,
                         VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                         VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -304,17 +315,8 @@ impl<'a> RenderTargetBuilder<'a> {
                 }
             }
 
-            let clear_operation = if target_info.clear_on_load {
-                VK_ATTACHMENT_LOAD_OP_CLEAR
-            } else {
-                VK_ATTACHMENT_LOAD_OP_LOAD
-            };
-
-            let store_operation = if target_info.store_on_save {
-                VK_ATTACHMENT_STORE_OP_STORE
-            } else {
-                VK_ATTACHMENT_STORE_OP_DONT_CARE
-            };
+            let clear_operation = Self::clear_op(target_info.clear_on_load);
+            let store_operation = Self::store_op(target_info.store_on_save);
 
             // push clear values
             match target_info.clear_value {
@@ -539,5 +541,23 @@ impl<'a> RenderTargetBuilder<'a> {
         )?;
 
         Ok((renderpass, images, clear_values))
+    }
+
+    #[inline]
+    fn clear_op(clear_on_load: bool) -> VkAttachmentLoadOp {
+        if clear_on_load {
+            VK_ATTACHMENT_LOAD_OP_CLEAR
+        } else {
+            VK_ATTACHMENT_LOAD_OP_LOAD
+        }
+    }
+
+    #[inline]
+    fn store_op(store_on_save: bool) -> VkAttachmentStoreOp {
+        if store_on_save {
+            VK_ATTACHMENT_STORE_OP_STORE
+        } else {
+            VK_ATTACHMENT_STORE_OP_DONT_CARE
+        }
     }
 }
