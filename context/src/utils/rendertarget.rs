@@ -281,40 +281,7 @@ impl<'a> RenderTargetBuilder<'a> {
 
         let mut attachment_count = 0;
 
-        for (i, target_info) in self.target_infos.iter().enumerate() {
-            // check for prepared images and their index
-            if let Some((prepared_images, index, clear_color, clear_on_load)) =
-                self.prepared_targets
-            {
-                if i == index {
-                    // assume prepared images are always color attachments
-                    clear_values.push(VkClearValue::color(VkClearColorValue::float32(clear_color)));
-
-                    let clear_operation = Self::clear_op(clear_on_load);
-
-                    // add color attachment
-                    attachments.push(VkAttachmentDescription::new(
-                        0,
-                        prepared_images[0].vk_format(),
-                        VK_SAMPLE_COUNT_1_BIT,
-                        clear_operation,
-                        VK_ATTACHMENT_STORE_OP_STORE,
-                        VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                        VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                        prepared_images[0].image_layout()?,
-                        prepared_images[0].image_layout()?,
-                    ));
-
-                    // add color reference
-                    color_references.push(VkAttachmentReference {
-                        attachment: attachment_count,
-                        layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    });
-
-                    attachment_count += 1;
-                }
-            }
-
+        for target_info in self.target_infos.iter() {
             let clear_operation = Self::clear_op(target_info.clear_on_load);
             let store_operation = Self::store_op(target_info.store_on_save);
 
@@ -422,6 +389,44 @@ impl<'a> RenderTargetBuilder<'a> {
             }
 
             images.push(image);
+        }
+
+        // insert prepared images
+        if let Some((prepared_images, index, clear_color, clear_on_load)) = self.prepared_targets {
+            // assume prepared images are always color attachments
+            clear_values.insert(
+                index,
+                VkClearValue::color(VkClearColorValue::float32(clear_color)),
+            );
+
+            let clear_operation = Self::clear_op(clear_on_load);
+
+            // add color attachment
+            attachments.insert(
+                index,
+                VkAttachmentDescription::new(
+                    0,
+                    prepared_images[0].vk_format(),
+                    VK_SAMPLE_COUNT_1_BIT,
+                    clear_operation,
+                    VK_ATTACHMENT_STORE_OP_STORE,
+                    VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                    VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                    prepared_images[0].image_layout()?,
+                    prepared_images[0].image_layout()?,
+                ),
+            );
+
+            // add color reference
+            color_references.insert(
+                index,
+                VkAttachmentReference {
+                    attachment: attachment_count,
+                    layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                },
+            );
+
+            attachment_count += 1;
         }
 
         // add resolve target if possible
