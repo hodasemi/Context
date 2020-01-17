@@ -246,13 +246,11 @@ impl<'a> RenderTargetBuilder<'a> {
     ) -> Vec<&'b Arc<Image>> {
         let mut ref_images = Vec::new();
 
-        for (i, image) in images.iter().enumerate() {
-            if i == index {
-                ref_images.push(prepared_target);
-            }
-
+        for image in images.iter() {
             ref_images.push(image);
         }
+
+        ref_images.insert(index, prepared_target);
 
         ref_images
     }
