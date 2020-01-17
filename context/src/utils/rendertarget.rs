@@ -214,6 +214,14 @@ impl RenderTarget {
         &self.images
     }
 
+    pub fn width(&self) -> u32 {
+        self.extent.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.extent.height
+    }
+
     pub fn begin(
         &self,
         command_buffer: &Arc<CommandBuffer>,
