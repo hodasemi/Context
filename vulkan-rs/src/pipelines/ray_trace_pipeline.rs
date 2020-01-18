@@ -11,7 +11,6 @@ pub struct RayTracingPipelineBuilder {
     shader_groups: Vec<VkRayTracingShaderGroupCreateInfoNV>,
     max_recursion_depth: u32,
     shader_binding_table_builder: ShaderBindingTableBuilder,
-    pipeline_layout_builder: PipelineLayoutBuilder,
 }
 
 impl RayTracingPipelineBuilder {
@@ -117,23 +116,11 @@ impl RayTracingPipelineBuilder {
         self
     }
 
-    pub fn add_descriptor_set_layout(
-        mut self,
-        descriptor_set_layout: &dyn VkHandle<VkDescriptorSetLayout>,
-    ) -> Self {
-        self.pipeline_layout_builder = self
-            .pipeline_layout_builder
-            .add_descriptor_set_layout(descriptor_set_layout);
-
-        self
-    }
-
     pub fn build(
         mut self,
         device: &Arc<Device>,
+        pipeline_layout: &Arc<PipelineLayout>,
     ) -> VerboseResult<(Arc<Pipeline>, ShaderBindingTable)> {
-        let pipeline_layout = self.pipeline_layout_builder.build(device.clone())?;
-
         let shader_stages: Vec<VkPipelineShaderStageCreateInfo> = self
             .shader_modules
             .iter()
@@ -211,7 +198,6 @@ impl Default for RayTracingPipelineBuilder {
             shader_groups: Vec::new(),
             max_recursion_depth: 2,
             shader_binding_table_builder: ShaderBindingTableBuilder::new(),
-            pipeline_layout_builder: PipelineLayout::builder(),
         }
     }
 }
