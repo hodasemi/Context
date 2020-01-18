@@ -16,7 +16,7 @@ pub use super::memory::Memory;
 pub use super::physicaldevice::PhysicalDevice;
 pub use super::pipeline::Pipeline;
 pub use super::pipelinecache::PipelineCache;
-pub use super::pipelinelayout::PipelineLayout;
+pub use super::pipelinelayout::{PipelineLayout, PipelineLayoutBuilder};
 pub use super::querypool::QueryPool;
 pub use super::queue::*;
 pub use super::renderpass::RenderPass;

@@ -6,26 +6,33 @@ use crate::prelude::*;
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct PipelineLayout {
-    device: Arc<Device>,
-    pipeline_layout: VkPipelineLayout,
+pub struct PipelineLayoutBuilder {
+    descriptor_set_layouts: Vec<VkDescriptorSetLayout>,
+    push_constant_ranges: Vec<VkPushConstantRange>,
 }
 
-impl PipelineLayout {
-    pub fn new(
-        device: Arc<Device>,
-        descriptor_set_layouts: &[&dyn VkHandle<VkDescriptorSetLayout>],
-        push_constant_ranges: &[VkPushConstantRange],
-    ) -> VerboseResult<Arc<PipelineLayout>> {
-        let set_layouts: Vec<VkDescriptorSetLayout> = descriptor_set_layouts
-            .iter()
-            .map(|set_layout| set_layout.vk_handle())
-            .collect();
+impl PipelineLayoutBuilder {
+    pub fn add_descriptor_set_layout(
+        mut self,
+        descriptor_set_layout: &dyn VkHandle<VkDescriptorSetLayout>,
+    ) -> Self {
+        self.descriptor_set_layouts
+            .push(descriptor_set_layout.vk_handle());
 
+        self
+    }
+
+    pub fn add_push_constant(mut self, push_constant: VkPushConstantRange) -> Self {
+        self.push_constant_ranges.push(push_constant);
+
+        self
+    }
+
+    pub fn build(self, device: Arc<Device>) -> VerboseResult<Arc<PipelineLayout>> {
         let pipeline_layout_ci = VkPipelineLayoutCreateInfo::new(
             VK_PIPELINE_LAYOUT_CREATE_NULL_BIT,
-            set_layouts.as_slice(),
-            push_constant_ranges,
+            &self.descriptor_set_layouts,
+            &self.push_constant_ranges,
         );
 
         let pipeline_layout = device.create_pipeline_layout(&pipeline_layout_ci)?;
@@ -34,6 +41,21 @@ impl PipelineLayout {
             device,
             pipeline_layout,
         }))
+    }
+}
+
+#[derive(Debug)]
+pub struct PipelineLayout {
+    device: Arc<Device>,
+    pipeline_layout: VkPipelineLayout,
+}
+
+impl PipelineLayout {
+    pub fn builder() -> PipelineLayoutBuilder {
+        PipelineLayoutBuilder {
+            descriptor_set_layouts: Vec::new(),
+            push_constant_ranges: Vec::new(),
+        }
     }
 }
 

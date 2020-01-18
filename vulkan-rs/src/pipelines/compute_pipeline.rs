@@ -9,8 +9,7 @@ pub struct ComputePipelineBuilder<'a> {
     shader_module: Option<&'a Arc<ShaderModule>>,
     pipeline_cache: Option<&'a Arc<PipelineCache>>,
     flags: VkPipelineCreateFlagBits,
-    descriptor_set_layouts: Vec<&'a dyn VkHandle<VkDescriptorSetLayout>>,
-    push_constant_ranges: Vec<VkPushConstantRange>,
+    pipeline_layout_builder: PipelineLayoutBuilder,
 }
 
 impl<'a> ComputePipelineBuilder<'a> {
@@ -45,25 +44,25 @@ impl<'a> ComputePipelineBuilder<'a> {
 
     pub fn add_descriptor_set_layout(
         mut self,
-        descriptor_set_layout: &'a dyn VkHandle<VkDescriptorSetLayout>,
+        descriptor_set_layout: &dyn VkHandle<VkDescriptorSetLayout>,
     ) -> Self {
-        self.descriptor_set_layouts.push(descriptor_set_layout);
+        self.pipeline_layout_builder = self
+            .pipeline_layout_builder
+            .add_descriptor_set_layout(descriptor_set_layout);
 
         self
     }
 
     pub fn add_push_constant_range(mut self, push_constant_range: VkPushConstantRange) -> Self {
-        self.push_constant_ranges.push(push_constant_range);
+        self.pipeline_layout_builder = self
+            .pipeline_layout_builder
+            .add_push_constant(push_constant_range);
 
         self
     }
 
     pub fn build(self, device: &Arc<Device>) -> VerboseResult<Arc<Pipeline>> {
-        let pipeline_layout = PipelineLayout::new(
-            device.clone(),
-            &self.descriptor_set_layouts,
-            &self.push_constant_ranges,
-        )?;
+        let pipeline_layout = self.pipeline_layout_builder.build(device.clone())?;
 
         let pipeline_ci = match self.shader_module {
             Some(module) => VkComputePipelineCreateInfo::new(
@@ -97,8 +96,7 @@ impl<'a> Default for ComputePipelineBuilder<'a> {
             shader_module: None,
             pipeline_cache: None,
             flags: 0.into(),
-            descriptor_set_layouts: Vec::new(),
-            push_constant_ranges: Vec::new(),
+            pipeline_layout_builder: PipelineLayout::builder(),
         }
     }
 }
