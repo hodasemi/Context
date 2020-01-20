@@ -83,7 +83,7 @@ impl VulkanCore {
         dev_exts.descriptor_indexing = true;
         dev_exts.maintenance3 = true;
 
-        if vulkan_debug_info.debugging && vulkan_debug_info.renderdoc {
+        if vulkan_debug_info.renderdoc {
             dev_exts.debug_marker = true;
         }
 

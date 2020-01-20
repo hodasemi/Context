@@ -197,6 +197,8 @@ pub struct ContextBuilder {
     #[cfg(feature = "openxr")]
     openxr_runtime_json: Option<String>,
 
+    enable_backtrace: bool,
+
     // app info
     app_info: ApplicationInfo,
 
@@ -232,6 +234,8 @@ impl<'a> Default for ContextBuilder {
 
             #[cfg(feature = "openxr")]
             openxr_runtime_json: None,
+
+            enable_backtrace: false,
 
             // app info
             app_info: ApplicationInfo {
@@ -328,6 +332,12 @@ impl ContextBuilder {
         self
     }
 
+    pub fn enable_backtrace(mut self) -> Self {
+        self.enable_backtrace = true;
+
+        self
+    }
+
     pub fn set_vulkan_debug_info(mut self, vulkan_debug_info: VulkanDebugInfo) -> Self {
         self.vulkan_debug_info = vulkan_debug_info;
 
@@ -359,8 +369,7 @@ impl ContextBuilder {
     }
 
     pub fn build(self) -> VerboseResult<Arc<Context>> {
-        // use vulkan debug as indicator for debugging in generell
-        if self.vulkan_debug_info.debugging {
+        if self.enable_backtrace {
             // set environment variable for Rust-debug-trace
             set_var("RUST_BACKTRACE", "1");
         }
