@@ -47,6 +47,12 @@ impl Fence {
     }
 }
 
+impl VulkanDevice for Fence {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(Fence, VkFence, fence);
 
 impl Drop for Fence {

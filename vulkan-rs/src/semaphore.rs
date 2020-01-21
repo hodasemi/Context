@@ -21,6 +21,12 @@ impl Semaphore {
     }
 }
 
+impl VulkanDevice for Semaphore {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(Semaphore, VkSemaphore, semaphore);
 
 impl Drop for Semaphore {

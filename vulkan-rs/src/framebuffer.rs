@@ -123,6 +123,12 @@ impl Framebuffer {
     }
 }
 
+impl VulkanDevice for Framebuffer {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(Framebuffer, VkFramebuffer, framebuffer);
 
 impl Drop for Framebuffer {

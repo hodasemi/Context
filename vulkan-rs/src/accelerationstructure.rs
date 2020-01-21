@@ -283,6 +283,12 @@ impl AccelerationStructure {
     }
 }
 
+impl VulkanDevice for AccelerationStructure {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(
     AccelerationStructure,
     VkAccelerationStructureNV,

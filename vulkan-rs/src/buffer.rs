@@ -200,6 +200,12 @@ impl<T> Buffer<T> {
     }
 }
 
+impl<T> VulkanDevice for Buffer<T> {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle_t!(Buffer, VkBuffer, buffer);
 
 impl<T> VkHandle<VkDeviceMemory> for Buffer<T> {

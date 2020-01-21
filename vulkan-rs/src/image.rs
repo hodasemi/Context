@@ -907,6 +907,12 @@ impl Image {
     }
 }
 
+impl VulkanDevice for Image {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(Image, VkImage, image);
 impl_vk_handle!(Image, VkSampler, sampler);
 impl_vk_handle!(Image, VkImageView, image_view);

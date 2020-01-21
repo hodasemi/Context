@@ -113,6 +113,12 @@ impl ShaderModule {
     }
 }
 
+impl VulkanDevice for ShaderModule {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(ShaderModule, VkShaderModule, shader_module);
 
 impl Drop for ShaderModule {

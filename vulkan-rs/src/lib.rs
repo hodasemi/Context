@@ -42,6 +42,10 @@ pub trait VkHandle<T> {
     fn vk_handle(&self) -> T;
 }
 
+pub trait VulkanDevice {
+    fn device(&self) -> &std::sync::Arc<device::Device>;
+}
+
 #[macro_export]
 macro_rules! impl_vk_handle {
     ($struct_name:ident, $target_name:ident, $value:ident) => {

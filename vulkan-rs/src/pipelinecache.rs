@@ -38,6 +38,12 @@ impl PipelineCache {
     }
 }
 
+impl VulkanDevice for PipelineCache {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(PipelineCache, VkPipelineCache, pipeline_cache);
 
 impl Drop for PipelineCache {

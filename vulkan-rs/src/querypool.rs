@@ -56,6 +56,12 @@ impl QueryPool {
     }
 }
 
+impl VulkanDevice for QueryPool {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(QueryPool, VkQueryPool, query_pool);
 
 impl Drop for QueryPool {

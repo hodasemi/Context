@@ -112,6 +112,12 @@ impl DescriptorSetLayout {
     }
 }
 
+impl VulkanDevice for DescriptorSetLayout {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(
     DescriptorSetLayout,
     VkDescriptorSetLayout,

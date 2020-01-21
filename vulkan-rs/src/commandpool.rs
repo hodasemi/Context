@@ -59,6 +59,12 @@ impl CommandPool {
     }
 }
 
+impl VulkanDevice for CommandPool {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(CommandPool, VkCommandPool, command_pool);
 
 impl Drop for CommandPool {

@@ -82,6 +82,12 @@ impl DescriptorPool {
     }
 }
 
+impl VulkanDevice for DescriptorPool {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(DescriptorPool, VkDescriptorPool, descriptor_pool);
 
 impl VkHandle<VkDescriptorSetLayout> for DescriptorPool {

@@ -229,6 +229,12 @@ impl DescriptorSet {
     }
 }
 
+impl VulkanDevice for DescriptorSet {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(DescriptorSet, VkDescriptorSet, descriptor_set);
 
 impl VkHandle<VkDescriptorSetLayout> for DescriptorSet {

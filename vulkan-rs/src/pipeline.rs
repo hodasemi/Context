@@ -86,6 +86,12 @@ impl Pipeline {
     }
 }
 
+impl VulkanDevice for Pipeline {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(Pipeline, VkPipeline, pipeline);
 
 impl Drop for Pipeline {

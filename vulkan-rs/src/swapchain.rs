@@ -173,6 +173,12 @@ impl Swapchain {
     }
 }
 
+impl VulkanDevice for Swapchain {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl VkHandle<VkSwapchainKHR> for Swapchain {
     fn vk_handle(&self) -> VkSwapchainKHR {
         self.swapchain.lock().unwrap().clone()

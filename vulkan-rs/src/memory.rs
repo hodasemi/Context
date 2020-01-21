@@ -66,6 +66,12 @@ impl<T> Memory<T> {
     }
 }
 
+impl<T> VulkanDevice for Memory<T> {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl<T: Clone> Memory<T> {
     pub fn map(
         &self,

@@ -116,6 +116,12 @@ impl Queue {
     }
 }
 
+impl VulkanDevice for Queue {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(Queue, VkQueue, queue);
 
 impl Queue {

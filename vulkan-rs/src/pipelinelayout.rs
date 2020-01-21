@@ -59,6 +59,12 @@ impl PipelineLayout {
     }
 }
 
+impl VulkanDevice for PipelineLayout {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(PipelineLayout, VkPipelineLayout, pipeline_layout);
 
 impl Drop for PipelineLayout {

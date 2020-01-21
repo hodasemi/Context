@@ -858,6 +858,12 @@ impl CommandBuffer {
     }
 }
 
+impl VulkanDevice for CommandBuffer {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl Drop for CommandBuffer {
     fn drop(&mut self) {
         self.device

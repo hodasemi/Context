@@ -34,6 +34,12 @@ impl RenderPass {
     }
 }
 
+impl VulkanDevice for RenderPass {
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+}
+
 impl_vk_handle!(RenderPass, VkRenderPass, render_pass);
 
 impl Drop for RenderPass {
