@@ -3,7 +3,7 @@ use utilities::prelude::*;
 use crate::impl_vk_handle;
 use crate::prelude::*;
 
-use cgmath::{Matrix, Matrix4};
+use cgmath::{Matrix, Matrix4, One};
 
 use std::mem;
 use std::sync::Arc;
@@ -19,10 +19,14 @@ impl AccelerationStructureBuilder {
     pub fn add_instance(
         mut self,
         blas: &Arc<AccelerationStructure>,
-        transform: Matrix4<f32>,
+        transform: Option<Matrix4<f32>>,
         flags: impl Into<VkGeometryInstanceFlagBitsNV>,
     ) -> Self {
-        let transposed = transform.transpose();
+        let transposed = match transform {
+            Some(transform) => transform.transpose(),
+            None => Matrix4::one(),
+        };
+
         let typed: &[f32; 16] = transposed.as_ref();
         let cut: [f32; 12] = AccelerationStructure::clone_into_array(typed);
 
