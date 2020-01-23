@@ -20,7 +20,6 @@ impl RayTracingPipelineBuilder {
         self
     }
 
-    // TODO: add support for specialization constants
     pub fn add_shader(
         mut self,
         shader_module: Arc<ShaderModule>,
@@ -56,10 +55,9 @@ impl RayTracingPipelineBuilder {
         self
     }
 
-    // TODO: add support for specialization constants
-    pub fn add_hit_shaders<'a>(
+    pub fn add_hit_shaders(
         mut self,
-        shader_modules: impl IntoIterator<Item = &'a Arc<ShaderModule>>,
+        shader_modules: impl IntoIterator<Item = Arc<ShaderModule>>,
         data: Option<Vec<u8>>,
         specialization_constants: impl IntoIterator<Item = Option<SpecializationConstants>>,
     ) -> Self {
@@ -106,7 +104,7 @@ impl RayTracingPipelineBuilder {
             }
 
             self.shader_modules
-                .push((shader_module.clone(), specialization_constant));
+                .push((shader_module, specialization_constant));
         }
         self.shader_binding_table_builder = self
             .shader_binding_table_builder
