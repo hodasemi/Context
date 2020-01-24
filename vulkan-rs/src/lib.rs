@@ -42,10 +42,6 @@ pub trait VkHandle<T> {
     fn vk_handle(&self) -> T;
 }
 
-pub trait ByteSize {
-    fn byte_size(&self) -> vulkan_sys::prelude::VkDeviceSize;
-}
-
 pub trait VulkanDevice {
     fn device(&self) -> &std::sync::Arc<device::Device>;
 }

@@ -26,10 +26,7 @@ enum InnerWrite {
 }
 
 impl DescriptorWrite {
-    pub fn uniform_buffers<T>(
-        binding: u32,
-        buffers: &[impl VkHandle<VkBuffer> + ByteSize],
-    ) -> Self {
+    pub fn uniform_buffers<T>(binding: u32, buffers: &[&Arc<Buffer<T>>]) -> Self {
         DescriptorWrite {
             binding,
             descriptor_type: VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -46,10 +43,7 @@ impl DescriptorWrite {
         }
     }
 
-    pub fn storage_buffers<T>(
-        binding: u32,
-        buffers: &[impl VkHandle<VkBuffer> + ByteSize],
-    ) -> Self {
+    pub fn storage_buffers<T>(binding: u32, buffers: &[&Arc<Buffer<T>>]) -> Self {
         DescriptorWrite {
             binding,
             descriptor_type: VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -66,10 +60,7 @@ impl DescriptorWrite {
         }
     }
 
-    pub fn combined_samplers(
-        binding: u32,
-        images: &[impl VkHandle<VkSampler> + VkHandle<VkImageView> + VkHandle<VkImageLayout>],
-    ) -> Self {
+    pub fn combined_samplers(binding: u32, images: &[&Arc<Image>]) -> Self {
         DescriptorWrite {
             binding,
             descriptor_type: VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -79,17 +70,14 @@ impl DescriptorWrite {
                     .map(|image| VkDescriptorImageInfo {
                         sampler: image.vk_handle(),
                         imageView: image.vk_handle(),
-                        imageLayout: image.vk_handle(),
+                        imageLayout: image.image_layout().expect("image layout lock error"),
                     })
                     .collect(),
             ),
         }
     }
 
-    pub fn storage_images(
-        binding: u32,
-        images: &[impl VkHandle<VkSampler> + VkHandle<VkImageView> + VkHandle<VkImageLayout>],
-    ) -> Self {
+    pub fn storage_images(binding: u32, images: &[&Arc<Image>]) -> Self {
         DescriptorWrite {
             binding,
             descriptor_type: VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
@@ -99,7 +87,7 @@ impl DescriptorWrite {
                     .map(|image| VkDescriptorImageInfo {
                         sampler: image.vk_handle(),
                         imageView: image.vk_handle(),
-                        imageLayout: image.vk_handle(),
+                        imageLayout: image.image_layout().expect("image layout lock error"),
                     })
                     .collect(),
             ),
@@ -108,7 +96,7 @@ impl DescriptorWrite {
 
     pub fn acceleration_structures(
         binding: u32,
-        acceleration_structures: &[impl VkHandle<VkAccelerationStructureNV>],
+        acceleration_structures: &[&Arc<AccelerationStructure>],
     ) -> Self {
         let vk_as: Vec<VkAccelerationStructureNV> = acceleration_structures
             .iter()
