@@ -72,6 +72,7 @@ impl Layer {
 
     fn names(
         &self,
+        debugging: bool,
         steam_layer: bool,
         verbose: bool,
         renderdoc: bool,
@@ -82,8 +83,9 @@ impl Layer {
             let name_string = self.props[i].layer_name()?;
             let name = name_string.as_str();
 
-            if name == "VK_LAYER_LUNARG_standard_validation"
-                || name == "VK_LAYER_KHRONOS_validation"
+            if debugging
+                && (name == "VK_LAYER_LUNARG_standard_validation"
+                    || name == "VK_LAYER_KHRONOS_validation")
             {
                 names.push(name_string.clone());
             }
@@ -121,10 +123,16 @@ impl Instance {
             let layer_object = Layer::create(&entry_functions)?;
 
             layer_object.names(
+                true,
                 debug_info.steam_layer,
                 debug_info.verbose,
                 debug_info.renderdoc,
             )?
+        } else if debug_info.renderdoc {
+            let layer_object = Layer::create(&entry_functions)?;
+
+            // render doc only
+            layer_object.names(false, false, false, true)?
         } else {
             Vec::new()
         };
