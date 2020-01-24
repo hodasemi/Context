@@ -191,12 +191,32 @@ impl<T> Buffer<T> {
         }
     }
 
-    pub fn byte_size(&self) -> VkDeviceSize {
-        self.size * mem::size_of::<T>() as VkDeviceSize
-    }
-
     pub fn size(&self) -> VkDeviceSize {
         self.size
+    }
+}
+
+impl<T> ByteSize for Buffer<T> {
+    fn byte_size(&self) -> VkDeviceSize {
+        self.size * mem::size_of::<T>() as VkDeviceSize
+    }
+}
+
+impl<'a, T> ByteSize for &'a Buffer<T> {
+    fn byte_size(&self) -> VkDeviceSize {
+        self.size * mem::size_of::<T>() as VkDeviceSize
+    }
+}
+
+impl<T> ByteSize for Arc<Buffer<T>> {
+    fn byte_size(&self) -> VkDeviceSize {
+        self.size * mem::size_of::<T>() as VkDeviceSize
+    }
+}
+
+impl<'a, T> ByteSize for &'a Arc<Buffer<T>> {
+    fn byte_size(&self) -> VkDeviceSize {
+        self.size * mem::size_of::<T>() as VkDeviceSize
     }
 }
 

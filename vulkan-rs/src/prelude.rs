@@ -31,7 +31,7 @@ pub use super::pipelines::{
     ray_trace_pipeline::{RayTracingPipelineBuilder, ShaderBindingTable},
 };
 
-pub use super::{OutOfDate, VkHandle, VulkanDevice};
+pub use super::{ByteSize, OutOfDate, VkHandle, VulkanDevice};
 
 pub use super::mappedmemory::VkMappedMemory;
 

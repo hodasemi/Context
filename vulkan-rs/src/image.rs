@@ -927,6 +927,30 @@ impl_vk_handle!(Image, VkImage, image);
 impl_vk_handle!(Image, VkSampler, sampler);
 impl_vk_handle!(Image, VkImageView, image_view);
 
+impl VkHandle<VkImageLayout> for Image {
+    fn vk_handle(&self) -> VkImageLayout {
+        self.image_layout().expect("image layout lock error")
+    }
+}
+
+impl<'a> VkHandle<VkImageLayout> for &'a Image {
+    fn vk_handle(&self) -> VkImageLayout {
+        self.image_layout().expect("image layout lock error")
+    }
+}
+
+impl VkHandle<VkImageLayout> for Arc<Image> {
+    fn vk_handle(&self) -> VkImageLayout {
+        self.image_layout().expect("image layout lock error")
+    }
+}
+
+impl<'a> VkHandle<VkImageLayout> for &'a Arc<Image> {
+    fn vk_handle(&self) -> VkImageLayout {
+        self.image_layout().expect("image layout lock error")
+    }
+}
+
 impl Drop for Image {
     fn drop(&mut self) {
         if self.sampler != VkSampler::NULL_HANDLE {
