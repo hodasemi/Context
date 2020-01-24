@@ -101,7 +101,7 @@ impl OpenVRRenderCore {
 
         if !Image::check_configuration(device, VK_IMAGE_TILING_OPTIMAL, format, usage) {
             create_error!(format!(
-                "wring config: {:?}, {:?}, {:?}",
+                "wrong config: {:?}, {:?}, {:?}",
                 VK_IMAGE_TILING_OPTIMAL, format, usage
             ));
         }

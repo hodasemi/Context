@@ -57,7 +57,7 @@ impl VulkanWindowRenderCore {
             create_info.usage,
         ) {
             create_error!(format!(
-                "wring config: {:?}, {:?}, {:?}",
+                "wrong config: {:?}, {:?}, {:?}",
                 VK_IMAGE_TILING_OPTIMAL, create_info.format, create_info.usage
             ));
         }
