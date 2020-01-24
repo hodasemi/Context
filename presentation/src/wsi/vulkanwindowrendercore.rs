@@ -50,18 +50,6 @@ impl VulkanWindowRenderCore {
             );
         }
 
-        if !Image::check_configuration(
-            device,
-            VK_IMAGE_TILING_OPTIMAL,
-            create_info.format,
-            create_info.usage,
-        ) {
-            create_error!(format!(
-                "wrong config: {:?}, {:?}, {:?}",
-                VK_IMAGE_TILING_OPTIMAL, create_info.format, create_info.usage
-            ));
-        }
-
         // create swapchain
         let swapchain = Swapchain::new(
             device.clone(),
@@ -73,13 +61,8 @@ impl VulkanWindowRenderCore {
             1,
         )?;
 
-        let swapchain_images = Self::create_swapchain_images(
-            &swapchain,
-            device,
-            queue,
-            swapchain.format()?,
-            create_info.usage,
-        )?;
+        let swapchain_images =
+            Self::create_swapchain_images(&swapchain, device, queue, create_info.usage)?;
 
         let render_sem = Semaphore::new(device.clone())?;
         let image_sem = Semaphore::new(device.clone())?;
@@ -132,7 +115,6 @@ impl VulkanWindowRenderCore {
             &self.swapchain,
             self.render_backend.device(),
             self.render_backend.queue(),
-            self.swapchain.format()?,
             self.usage,
         )?;
 
@@ -149,11 +131,20 @@ impl VulkanWindowRenderCore {
         swapchain: &Arc<Swapchain>,
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
-        format: VkFormat,
         usage: impl Into<VkImageUsageFlagBits>,
     ) -> VerboseResult<Vec<Arc<Image>>> {
-        let mut swapchain_images = Vec::new();
         let usage = usage.into();
+        let format = swapchain.format()?;
+        let tiling = VK_IMAGE_TILING_OPTIMAL;
+
+        if !Image::check_configuration(device, tiling, swapchain.format()?, usage) {
+            create_error!(format!(
+                "wrong config: {:?}, {:?}, {:?}",
+                tiling, format, usage
+            ));
+        }
+
+        let mut swapchain_images = Vec::new();
 
         for image in swapchain.vk_images()? {
             swapchain_images.push(
