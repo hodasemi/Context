@@ -304,6 +304,12 @@ impl<'a> RenderTargetBuilder<'a> {
                 }
             };
 
+            if let Some((_, index, _, _)) = self.prepared_targets {
+                if index as u32 == attachment_count {
+                    attachment_count += 1;
+                }
+            }
+
             // check for color attachment flag
             let (format, aspect) = if (target_info.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0
             {
@@ -427,7 +433,7 @@ impl<'a> RenderTargetBuilder<'a> {
             color_references.insert(
                 index,
                 VkAttachmentReference {
-                    attachment: attachment_count,
+                    attachment: index as u32,
                     layout: VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 },
             );
