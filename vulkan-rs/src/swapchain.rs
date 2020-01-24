@@ -27,6 +27,7 @@ impl Swapchain {
         vsync: bool,
         image_count: u32,
         image_usage: impl Into<VkImageUsageFlagBits>,
+        prefered_format: VkFormat,
         array_layers: u32,
     ) -> VerboseResult<Arc<Swapchain>> {
         let surface_caps = surface.capabilities(&device)?;
@@ -69,7 +70,7 @@ impl Swapchain {
                 surface_caps.currentTransform
             };
 
-        let (format, colorspace) = surface.format_colorspace(&device)?;
+        let (format, colorspace) = surface.format_colorspace(&device, prefered_format)?;
 
         let swapchain_ci = VkSwapchainCreateInfoKHR::new(
             0,
@@ -164,6 +165,10 @@ impl Swapchain {
 
     pub fn height(&self) -> u32 {
         self.height.load(SeqCst)
+    }
+
+    pub fn format(&self) -> VerboseResult<VkFormat> {
+        Ok(self.create_info.lock()?.imageFormat)
     }
 
     #[inline]

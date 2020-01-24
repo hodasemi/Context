@@ -211,7 +211,7 @@ pub struct ContextBuilder {
     // vulkan core settings
     sample_count: VkSampleCountFlags,
     enable_raytracing: bool,
-    vsync: bool,
+    render_core_create_info: RenderCoreCreateInfo,
 
     // vulkan debug extension selection
     vulkan_debug_info: VulkanDebugInfo,
@@ -260,7 +260,11 @@ impl<'a> Default for ContextBuilder {
             // vulkan core settings
             sample_count: VK_SAMPLE_COUNT_1_BIT,
             enable_raytracing: false,
-            vsync: false,
+            render_core_create_info: RenderCoreCreateInfo {
+                format: VK_FORMAT_R8G8B8A8_UNORM,
+                usage: 0.into(),
+                vsync: false,
+            },
 
             // vulkan debug extension selection
             vulkan_debug_info: VulkanDebugInfo::default(),
@@ -326,8 +330,17 @@ impl ContextBuilder {
         self
     }
 
-    pub fn enable_vsync(mut self) -> Self {
-        self.vsync = true;
+    pub fn set_render_core_info(
+        mut self,
+        format: VkFormat,
+        usage: impl Into<VkImageUsageFlagBits>,
+        vsync: bool,
+    ) -> Self {
+        self.render_core_create_info = RenderCoreCreateInfo {
+            format,
+            usage: usage.into(),
+            vsync,
+        };
 
         self
     }
@@ -387,8 +400,12 @@ impl ContextBuilder {
 
         let os_specific = OsSpecific::new(&self.os_specific_config);
 
-        let (render_core, _target_mode) =
-            create_render_core(&presentation, core.device(), core.queue(), self.vsync)?;
+        let (render_core, _target_mode) = create_render_core(
+            &presentation,
+            core.device(),
+            core.queue(),
+            self.render_core_create_info,
+        )?;
 
         let context = Arc::new(Context {
             core,

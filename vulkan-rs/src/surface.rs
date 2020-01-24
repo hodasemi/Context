@@ -31,6 +31,7 @@ impl Surface {
     pub fn format_colorspace(
         &self,
         device: &Arc<Device>,
+        prefered_format: VkFormat,
     ) -> VerboseResult<(VkFormat, VkColorSpaceKHR)> {
         let surface_formats = self
             .instance
@@ -38,12 +39,12 @@ impl Surface {
 
         // if there is a single undefined format, assume the preferred mode
         if (surface_formats.len() == 1) && (surface_formats[0].format == VK_FORMAT_UNDEFINED) {
-            return Ok((VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR));
+            return Ok((prefered_format, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR));
         }
 
-        // look for VK_FORMAT_R8G8B8A8_UNORM
+        // look for prefered_format
         for surface_format in &surface_formats {
-            if surface_format.format == VK_FORMAT_R8G8B8A8_UNORM {
+            if surface_format.format == prefered_format {
                 return Ok((surface_format.format, surface_format.colorSpace));
             }
         }

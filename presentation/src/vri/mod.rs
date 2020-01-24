@@ -55,6 +55,7 @@ pub mod openvrrendercore {
     use super::openvrintegration::OpenVRIntegration;
 
     use crate::prelude::*;
+    use crate::RenderCoreCreateInfo;
 
     pub struct OpenVRRenderCore {
         _dummy: u32,
@@ -65,6 +66,7 @@ pub mod openvrrendercore {
             _: &OpenVRIntegration,
             _: &Arc<Device>,
             _: &Arc<Mutex<Queue>>,
+            _: RenderCoreCreateInfo,
         ) -> VerboseResult<(Self, TargetMode<()>)> {
             create_error!("OpenVR feature not enabled!")
         }

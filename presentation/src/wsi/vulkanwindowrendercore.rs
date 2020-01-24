@@ -1,4 +1,4 @@
-use crate::{prelude::*, renderbackend::RenderBackend};
+use crate::{prelude::*, renderbackend::RenderBackend, RenderCoreCreateInfo};
 
 use super::windowsystemintegration::WindowSystemIntegration;
 
@@ -14,9 +14,10 @@ use std::u64;
 pub struct VulkanWindowRenderCore {
     // driver provided images
     swapchain: Arc<Swapchain>,
-    surface: Arc<Surface>,
+    _surface: Arc<Surface>,
 
     format: VkFormat,
+    usage: VkImageUsageFlagBits,
 
     image_available_sem: Arc<Semaphore>,
     render_finished_sem: Arc<Semaphore>,
@@ -32,7 +33,7 @@ impl VulkanWindowRenderCore {
         wsi: &WindowSystemIntegration,
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
-        vsync: bool,
+        create_info: RenderCoreCreateInfo,
     ) -> VerboseResult<(VulkanWindowRenderCore, TargetMode<()>)> {
         // check swapchain extension
         if !device.enabled_extensions().swapchain {
@@ -49,21 +50,36 @@ impl VulkanWindowRenderCore {
             );
         }
 
+        if !Image::check_configuration(
+            device,
+            VK_IMAGE_TILING_OPTIMAL,
+            create_info.format,
+            create_info.usage,
+        ) {
+            create_error!(format!(
+                "wring config: {:?}, {:?}, {:?}",
+                VK_IMAGE_TILING_OPTIMAL, create_info.format, create_info.usage
+            ));
+        }
+
         // create swapchain
         let swapchain = Swapchain::new(
             device.clone(),
             &surface,
-            vsync,
-            0,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-                | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-                | VK_IMAGE_USAGE_STORAGE_BIT,
+            create_info.vsync,
+            2,
+            create_info.usage,
+            create_info.format,
             1,
         )?;
 
-        let (format, _) = surface.format_colorspace(&device)?;
-
-        let swapchain_images = Self::create_swapchain_images(&swapchain, device, queue, format)?;
+        let swapchain_images = Self::create_swapchain_images(
+            &swapchain,
+            device,
+            queue,
+            swapchain.format()?,
+            create_info.usage,
+        )?;
 
         let render_sem = Semaphore::new(device.clone())?;
         let image_sem = Semaphore::new(device.clone())?;
@@ -73,10 +89,11 @@ impl VulkanWindowRenderCore {
             RenderBackend::new(device, queue, TargetMode::Single(swapchain_images))?;
 
         let window_render_core = VulkanWindowRenderCore {
-            swapchain,
-            surface,
+            format: swapchain.format()?,
+            usage: create_info.usage,
 
-            format,
+            swapchain,
+            _surface: surface,
 
             render_finished_sem: render_sem,
             image_available_sem: image_sem,
@@ -111,15 +128,12 @@ impl VulkanWindowRenderCore {
     fn resize(&self) -> VerboseResult<()> {
         self.swapchain.recreate()?;
 
-        let (format, _) = self
-            .surface
-            .format_colorspace(&self.render_backend.device())?;
-
         let swapchain_images = Self::create_swapchain_images(
             &self.swapchain,
             self.render_backend.device(),
             self.render_backend.queue(),
-            format,
+            self.swapchain.format()?,
+            self.usage,
         )?;
 
         self.render_backend.resize(
@@ -136,8 +150,10 @@ impl VulkanWindowRenderCore {
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
         format: VkFormat,
+        usage: impl Into<VkImageUsageFlagBits>,
     ) -> VerboseResult<Vec<Arc<Image>>> {
         let mut swapchain_images = Vec::new();
+        let usage = usage.into();
 
         for image in swapchain.vk_images()? {
             swapchain_images.push(
@@ -147,6 +163,7 @@ impl VulkanWindowRenderCore {
                     swapchain.width(),
                     swapchain.height(),
                     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                    usage,
                 )
                 .nearest_sampler()
                 .build(device, queue)?,

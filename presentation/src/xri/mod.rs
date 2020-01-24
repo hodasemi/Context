@@ -56,6 +56,7 @@ pub mod openxrrendercore {
     use super::openxrintegration::OpenXRIntegration;
 
     use crate::prelude::*;
+    use crate::RenderCoreCreateInfo;
 
     pub struct OpenXRRenderCore {
         _dummy: u32,
@@ -66,6 +67,7 @@ pub mod openxrrendercore {
             _: &OpenXRIntegration,
             _: &Arc<Device>,
             _: &Arc<Mutex<Queue>>,
+            _: RenderCoreCreateInfo,
         ) -> VerboseResult<(Self, TargetMode<()>)> {
             create_error!("OpenXR feature not enabled!")
         }

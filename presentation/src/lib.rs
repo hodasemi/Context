@@ -29,11 +29,18 @@ use crate::prelude::*;
 
 use std::sync::{Arc, Mutex};
 
+#[derive(Debug, Clone, Copy)]
+pub struct RenderCoreCreateInfo {
+    pub usage: VkImageUsageFlagBits,
+    pub format: VkFormat,
+    pub vsync: bool,
+}
+
 pub fn create_render_core(
     presentation_core: &PresentationCore,
     device: &Arc<Device>,
     queue: &Arc<Mutex<Queue>>,
-    enable_vsync: bool,
+    create_info: RenderCoreCreateInfo,
 ) -> VerboseResult<(Box<dyn RenderCore + Send + Sync>, TargetMode<()>)> {
     match presentation_core.backend() {
         PresentationBackend::Window(wsi) => {
@@ -42,20 +49,20 @@ pub fn create_render_core(
                     wsi,
                     device,
                     queue,
-                    enable_vsync,
+                    create_info,
                 )?;
 
             Ok((Box::new(render_core), target_mode))
         }
         PresentationBackend::OpenXR(xri) => {
             let (render_core, target_mode) =
-                xri::openxrrendercore::OpenXRRenderCore::new(xri, device, queue)?;
+                xri::openxrrendercore::OpenXRRenderCore::new(xri, device, queue, create_info)?;
 
             Ok((Box::new(render_core), target_mode))
         }
         PresentationBackend::OpenVR(vri) => {
             let (render_core, target_mode) =
-                vri::openvrrendercore::OpenVRRenderCore::new(vri, device, queue)?;
+                vri::openvrrendercore::OpenVRRenderCore::new(vri, device, queue, create_info)?;
 
             Ok((Box::new(render_core), target_mode))
         }

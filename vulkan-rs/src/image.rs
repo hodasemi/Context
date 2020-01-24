@@ -57,6 +57,7 @@ struct PreinitializedImage {
     layers: u32,
     sample_count: VkSampleCountFlagBits,
     layout: VkImageLayout,
+    usage: VkImageUsageFlagBits,
 }
 
 enum ImageBuilderInternalType {
@@ -129,6 +130,7 @@ impl ImageBuilder {
                     layers: preinitialized_image.layers,
                     levels: 1,
                     sample_count: preinitialized_image.sample_count,
+                    _usage: preinitialized_image.usage,
                 });
 
                 if preinitialized_image.layout != VK_IMAGE_LAYOUT_UNDEFINED {
@@ -180,24 +182,14 @@ impl ImageBuilder {
     }
 
     pub fn check_configuration(&self, device: &Arc<Device>) -> bool {
-        let physical_device = device.physical_device();
-
         match &self.builder_type {
-            ImageBuilderInternalType::NewImage(create_info) => {
-                let format = create_info.vk_image_create_info.format;
-
-                match create_info.vk_image_create_info.tiling {
-                    VK_IMAGE_TILING_OPTIMAL => physical_device.check_optimal_format_features(
-                        format,
-                        create_info.vk_image_create_info.usage,
-                    ),
-                    VK_IMAGE_TILING_LINEAR => physical_device.check_linear_format_features(
-                        format,
-                        create_info.vk_image_create_info.usage,
-                    ),
-                }
-            }
-            _ => true,
+            ImageBuilderInternalType::NewImage(create_info) => Image::check_configuration(
+                device,
+                create_info.vk_image_create_info.tiling,
+                create_info.vk_image_create_info.format,
+                create_info.vk_image_create_info.usage,
+            ),
+            _ => false,
         }
     }
 
@@ -594,6 +586,7 @@ impl ImageBuilder {
             layers: info.vk_image_create_info.arrayLayers,
             levels: info.vk_image_create_info.mipLevels,
             sample_count: info.vk_image_create_info.samples,
+            _usage: info.vk_image_create_info.usage,
         }))
     }
 
@@ -665,6 +658,7 @@ pub struct Image {
     layers: u32, // array layers
     levels: u32, // mip map levels
     sample_count: VkSampleCountFlagBits,
+    _usage: VkImageUsageFlagBits,
 }
 
 impl Image {
@@ -682,6 +676,7 @@ impl Image {
         width: u32,
         height: u32,
         layout: VkImageLayout,
+        usage: impl Into<VkImageUsageFlagBits>,
     ) -> ImageBuilder {
         ImageBuilder::new(ImageBuilderInternalType::PreinitializedImage(
             PreinitializedImage {
@@ -692,6 +687,7 @@ impl Image {
                 layers: 1,
                 sample_count: VK_SAMPLE_COUNT_1_BIT.into(),
                 layout,
+                usage: usage.into(),
             },
         ))
     }
@@ -797,6 +793,20 @@ impl Image {
         create_info.vk_image_create_info.usage = usage.into();
 
         ImageBuilder::new(ImageBuilderInternalType::NewImage(create_info))
+    }
+
+    pub fn check_configuration(
+        device: &Arc<Device>,
+        tiling: VkImageTiling,
+        format: VkFormat,
+        usage: impl Into<VkImageUsageFlagBits>,
+    ) -> bool {
+        let physical_device = device.physical_device();
+
+        match tiling {
+            VK_IMAGE_TILING_OPTIMAL => physical_device.check_optimal_format_features(format, usage),
+            VK_IMAGE_TILING_LINEAR => physical_device.check_linear_format_features(format, usage),
+        }
     }
 
     pub fn device(&self) -> &Arc<Device> {

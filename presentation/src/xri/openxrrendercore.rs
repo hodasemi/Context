@@ -8,7 +8,7 @@ use openxr::{
 
 use cgmath::{vec3, Matrix4, Quaternion, SquareMatrix};
 
-use crate::{p_try, prelude::*, renderbackend::RenderBackend};
+use crate::{p_try, prelude::*, renderbackend::RenderBackend, RenderCoreCreateInfo};
 
 use super::openxrintegration::OpenXRIntegration;
 
@@ -45,6 +45,7 @@ impl OpenXRRenderCore {
         xri: &OpenXRIntegration,
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
+        create_info: RenderCoreCreateInfo,
     ) -> VerboseResult<(OpenXRRenderCore, TargetMode<()>)> {
         // create OpenXR session handle
         let (session, frame_waiter, frame_stream) = {
@@ -75,13 +76,14 @@ impl OpenXRRenderCore {
 
         let format = if formats
             .iter()
-            .find(|f| **f == VK_FORMAT_R8G8B8A8_UNORM as u32)
+            .find(|f| **f == create_info.format as u32)
             .is_some()
         {
-            VK_FORMAT_R8G8B8A8_UNORM as u32
+            create_info.format as u32
         } else {
             println!(
-                "OpenXR: VK_FORMAT_R8G8B8A8_UNORM not present, take {:?} instead",
+                "OpenXR: {} not present, take {:?} instead",
+                create_info.format,
                 VkFormat::from(formats[0])
             );
 
@@ -91,7 +93,8 @@ impl OpenXRRenderCore {
         // create swapchains
         let swapchain_ci = SwapchainCreateInfo {
             create_flags: SwapchainCreateFlags::EMPTY,
-            usage_flags: SwapchainUsageFlags::COLOR_ATTACHMENT | SwapchainUsageFlags::TRANSFER_DST,
+            // usage_flags: SwapchainUsageFlags::COLOR_ATTACHMENT | SwapchainUsageFlags::TRANSFER_DST,
+            usage_flags: Self::convert_usage_flags(create_info.usage),
             format,
             sample_count: view_config_view.recommended_swapchain_sample_count,
             width,
@@ -170,6 +173,11 @@ impl OpenXRRenderCore {
         };
 
         Ok((openxr_render_core, TargetMode::Stereo((), ())))
+    }
+
+    #[inline]
+    fn convert_usage_flags(usage: VkImageUsageFlagBits) -> SwapchainUsageFlags {
+        todo!()
     }
 
     #[inline]

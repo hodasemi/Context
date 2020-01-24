@@ -11,7 +11,7 @@ use vulkan_rs::prelude::*;
 
 use super::openvrintegration::OpenVRIntegration;
 
-use crate::{p_try, prelude::*, renderbackend::RenderBackend};
+use crate::{p_try, prelude::*, renderbackend::RenderBackend, RenderCoreCreateInfo};
 
 use std::mem::transmute;
 use std::sync::{Arc, Mutex, RwLock};
@@ -39,13 +39,20 @@ impl OpenVRRenderCore {
         vri: &OpenVRIntegration,
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
+        create_info: RenderCoreCreateInfo,
     ) -> VerboseResult<(Self, TargetMode<()>)> {
         let sample_count = VK_SAMPLE_COUNT_1_BIT;
         let (width, height) = vri.image_size();
-        let format = VK_FORMAT_R8G8B8A8_UNORM;
 
-        let (left_image, right_image) =
-            Self::create_target_images(width, height, sample_count, format, device, queue)?;
+        let (left_image, right_image) = Self::create_target_images(
+            width,
+            height,
+            sample_count,
+            create_info.usage,
+            create_info.format,
+            device,
+            queue,
+        )?;
 
         let images = TargetMode::Stereo(vec![left_image], vec![right_image]);
         let render_backend = RenderBackend::new(device, queue, images.clone())?;
@@ -58,7 +65,7 @@ impl OpenVRRenderCore {
 
             render_fence: Fence::builder().build(device.clone())?,
 
-            format,
+            format: create_info.format,
 
             current_image_indices: TargetMode::Stereo(0, 0),
             images,
@@ -84,15 +91,20 @@ impl OpenVRRenderCore {
         width: u32,
         height: u32,
         sample_count: VkSampleCountFlags,
+        usage: VkImageUsageFlagBits,
         format: VkFormat,
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
     ) -> VerboseResult<(Arc<Image>, Arc<Image>)> {
-        let image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-            | VK_IMAGE_USAGE_STORAGE_BIT
-            | VK_IMAGE_USAGE_SAMPLED_BIT;
+        // OpenVR requires the image to be transfer_src and sampled
+        let image_usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+        if !Image::check_configuration(device, VK_IMAGE_TILING_OPTIMAL, format, usage) {
+            create_error!(format!(
+                "wring config: {:?}, {:?}, {:?}",
+                VK_IMAGE_TILING_OPTIMAL, format, usage
+            ));
+        }
 
         let left_image = Image::empty(width, height, image_usage, sample_count)
             .nearest_sampler()

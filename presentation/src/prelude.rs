@@ -1,6 +1,6 @@
 pub use crate::traits::*;
 
-pub use crate::create_render_core;
+pub use crate::{create_render_core, RenderCoreCreateInfo};
 
 pub use crate::presentationcore::{ApplicationInfo, PresentationBackend, PresentationCore, VRMode};
 
