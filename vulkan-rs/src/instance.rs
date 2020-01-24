@@ -132,12 +132,12 @@ impl Instance {
         let mut checked_extensions = Vec::new();
         let mut extension_list = extensions.as_list();
 
-        if debug_info.debugging {
+        if debug_info.debugging || debug_info.renderdoc {
             extension_list.push(VkString::new("VK_EXT_debug_report"));
+        }
 
-            if debug_info.use_util {
-                extension_list.push(VkString::new("VK_EXT_debug_utils"));
-            }
+        if debug_info.use_util {
+            extension_list.push(VkString::new("VK_EXT_debug_utils"));
         }
 
         if !extension_list.is_empty() {
