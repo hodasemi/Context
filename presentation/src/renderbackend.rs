@@ -146,6 +146,10 @@ impl RenderBackend {
             post_processes: Mutex::new(Vec::new()),
         })
     }
+
+    pub(crate) fn required_image_usage() -> VkImageUsageFlagBits {
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT.into()
+    }
 }
 
 impl RenderBackend {

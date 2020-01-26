@@ -44,11 +44,13 @@ impl OpenVRRenderCore {
         let sample_count = VK_SAMPLE_COUNT_1_BIT;
         let (width, height) = vri.image_size();
 
+        let usage = create_info.usage | RenderBackend::required_image_usage();
+
         let (left_image, right_image) = Self::create_target_images(
             width,
             height,
             sample_count,
-            create_info.usage,
+            usage,
             create_info.format,
             device,
             queue,

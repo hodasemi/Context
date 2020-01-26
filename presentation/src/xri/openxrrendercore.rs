@@ -82,7 +82,7 @@ impl OpenXRRenderCore {
             create_info.format as u32
         } else {
             println!(
-                "OpenXR: {} not present, take {:?} instead",
+                "OpenXR: {:?} not present, take {:?} instead",
                 create_info.format,
                 VkFormat::from(formats[0])
             );
@@ -90,11 +90,13 @@ impl OpenXRRenderCore {
             formats[0]
         };
 
+        let usage = create_info.usage | RenderBackend::required_image_usage();
+
         // create swapchains
         let swapchain_ci = SwapchainCreateInfo {
             create_flags: SwapchainCreateFlags::EMPTY,
             // usage_flags: SwapchainUsageFlags::COLOR_ATTACHMENT | SwapchainUsageFlags::TRANSFER_DST,
-            usage_flags: Self::convert_usage_flags(create_info.usage),
+            usage_flags: Self::convert_usage_flags(usage),
             format,
             sample_count: view_config_view.recommended_swapchain_sample_count,
             width,
@@ -111,6 +113,7 @@ impl OpenXRRenderCore {
             width,
             height,
             VkFormat::from(format),
+            usage,
             device,
             queue,
         )?;
@@ -122,6 +125,7 @@ impl OpenXRRenderCore {
             width,
             height,
             VkFormat::from(format),
+            usage,
             device,
             queue,
         )?;
@@ -177,7 +181,31 @@ impl OpenXRRenderCore {
 
     #[inline]
     fn convert_usage_flags(usage: VkImageUsageFlagBits) -> SwapchainUsageFlags {
-        todo!()
+        let mut flags = SwapchainUsageFlags::default();
+
+        if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT {
+            flags |= SwapchainUsageFlags::COLOR_ATTACHMENT;
+        }
+
+        if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+            == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+        {
+            flags |= SwapchainUsageFlags::DEPTH_STENCIL_ATTACHMENT;
+        }
+
+        if (usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) == VK_IMAGE_USAGE_TRANSFER_SRC_BIT {
+            flags |= SwapchainUsageFlags::TRANSFER_SRC;
+        }
+
+        if (usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) == VK_IMAGE_USAGE_TRANSFER_DST_BIT {
+            flags |= SwapchainUsageFlags::TRANSFER_DST;
+        }
+
+        if (usage & VK_IMAGE_USAGE_SAMPLED_BIT) == VK_IMAGE_USAGE_SAMPLED_BIT {
+            flags |= SwapchainUsageFlags::SAMPLED;
+        }
+
+        flags
     }
 
     #[inline]
@@ -186,6 +214,7 @@ impl OpenXRRenderCore {
         width: u32,
         height: u32,
         format: VkFormat,
+        usage: VkImageUsageFlagBits,
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
     ) -> VerboseResult<Vec<Arc<Image>>> {
@@ -200,6 +229,7 @@ impl OpenXRRenderCore {
                     width,
                     height,
                     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                    usage,
                 )
                 .nearest_sampler()
                 .build(device, queue)?,

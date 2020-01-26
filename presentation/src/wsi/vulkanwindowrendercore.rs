@@ -50,19 +50,20 @@ impl VulkanWindowRenderCore {
             );
         }
 
+        let usage = create_info.usage | RenderBackend::required_image_usage();
+
         // create swapchain
         let swapchain = Swapchain::new(
             device.clone(),
             &surface,
             create_info.vsync,
             2,
-            create_info.usage,
+            usage,
             create_info.format,
             1,
         )?;
 
-        let swapchain_images =
-            Self::create_swapchain_images(&swapchain, device, queue, create_info.usage)?;
+        let swapchain_images = Self::create_swapchain_images(&swapchain, device, queue, usage)?;
 
         let render_sem = Semaphore::new(device.clone())?;
         let image_sem = Semaphore::new(device.clone())?;
@@ -73,7 +74,7 @@ impl VulkanWindowRenderCore {
 
         let window_render_core = VulkanWindowRenderCore {
             format: swapchain.format()?,
-            usage: create_info.usage,
+            usage: usage,
 
             swapchain,
             _surface: surface,
