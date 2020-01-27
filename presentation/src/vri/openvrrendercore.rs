@@ -101,7 +101,7 @@ impl OpenVRRenderCore {
         // OpenVR requires the image to be transfer_src and sampled
         let image_usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-        if !Image::check_configuration(device, VK_IMAGE_TILING_OPTIMAL, format, usage) {
+        if !Image::check_configuration(device, VK_IMAGE_TILING_OPTIMAL, format, image_usage) {
             create_error!(format!(
                 "wrong config: {:?}, {:?}, {:?}",
                 VK_IMAGE_TILING_OPTIMAL, format, image_usage
