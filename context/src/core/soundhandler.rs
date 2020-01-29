@@ -197,7 +197,7 @@ pub struct SoundHandler {
     music: Vec<Arc<Music>>,
 
     // 'clever' data handling
-    datas: HashMap<String, Rc<RefCell<SoundData>>>,
+    data: HashMap<String, Rc<RefCell<SoundData>>>,
 }
 
 impl SoundHandler {
@@ -213,7 +213,7 @@ impl SoundHandler {
 
             music: Vec::new(),
 
-            datas: HashMap::new(),
+            data: HashMap::new(),
         })
     }
 
@@ -247,11 +247,11 @@ impl SoundHandler {
 
     pub fn load_sound(&mut self, path: &str, sound_type: &str) -> VerboseResult<Arc<Sound>> {
         // create sound
-        let sound = match self.datas.get(path) {
+        let sound = match self.data.get(path) {
             Some(data) => Sound::from_data(path, sound_type, data.clone())?,
             None => {
                 let sound = Sound::new(path, sound_type)?;
-                self.datas
+                self.data
                     .insert(path.to_string(), sound.sound.try_borrow()?.get_datas());
 
                 sound
@@ -391,10 +391,18 @@ impl SoundHandler {
         }
     }
 
+    pub fn remove_sound(&mut self, sound: &Arc<Sound>) -> VerboseResult<()> {
+        if let Some(sounds) = self.sounds.get_mut(sound.sound_type()) {
+            erase_arc(sounds, sound);
+        }
+
+        Ok(())
+    }
+
     pub fn clear(&mut self) {
         self.sounds.clear();
         self.music.clear();
-        self.datas.clear();
+        self.data.clear();
     }
 }
 
