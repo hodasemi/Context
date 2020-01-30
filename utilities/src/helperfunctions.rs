@@ -25,23 +25,17 @@ pub fn erase_by_ptr<T>(vector: &mut Vec<T>, object: &T) -> bool {
     }
 }
 
-pub fn erase_arc<T: ?Sized>(vector: &mut Vec<Arc<T>>, object: &Arc<T>) -> bool {
+pub fn erase_arc<T: ?Sized>(vector: &mut Vec<Arc<T>>, object: &Arc<T>) -> Option<Arc<T>> {
     match vector.iter().position(|t| Arc::ptr_eq(t, object)) {
-        Some(i) => {
-            vector.remove(i);
-            true
-        }
-        None => false,
+        Some(i) => Some(vector.remove(i)),
+        None => None,
     }
 }
 
-pub fn erase_rc<T: ?Sized>(vector: &mut Vec<Rc<T>>, object: &Rc<T>) -> bool {
+pub fn erase_rc<T: ?Sized>(vector: &mut Vec<Rc<T>>, object: &Rc<T>) -> Option<Rc<T>> {
     match vector.iter().position(|t| Rc::ptr_eq(t, object)) {
-        Some(i) => {
-            vector.remove(i);
-            true
-        }
-        None => false,
+        Some(i) => Some(vector.remove(i)),
+        None => None,
     }
 }
 

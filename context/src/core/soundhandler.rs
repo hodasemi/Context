@@ -11,14 +11,14 @@ use presentation::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 macro_rules! sound_ctor {
     ( $(($struct_name:ident, $type_name:ident, $member:ident)),+ ) => {
         $(
             pub struct $struct_name {
-                $member: RefCell<$type_name>,
+                $member: Mutex<$type_name>,
                 path: String,
                 sound_type: String,
                 duration: Duration,
@@ -31,7 +31,7 @@ macro_rules! sound_ctor {
 
                     Ok(Arc::new($struct_name {
                         duration: $member.get_duration(),
-                        $member: RefCell::new($member),
+                        $member: Mutex::new($member),
                         path: path.to_string(),
                         sound_type: sound_type.to_string(),
                         reverb: RefCell::new(None),
@@ -39,7 +39,7 @@ macro_rules! sound_ctor {
                 }
 
                 pub fn play(&self, enable_looping: bool) -> VerboseResult<()> {
-                    let mut $member = self.$member.try_borrow_mut()?;
+                    let mut $member = self.$member.lock()?;
 
                     if !$member.is_playing() {
                         $member.play();
@@ -50,67 +50,67 @@ macro_rules! sound_ctor {
                 }
 
                 pub fn stop_looping(&self) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_looping(false);
+                    self.$member.lock()?.set_looping(false);
 
                     Ok(())
                 }
 
                 pub fn stop(&self) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.stop();
+                    self.$member.lock()?.stop();
 
                     Ok(())
                 }
 
                 pub fn set_position(&self, position: impl Into<[f32; 3]>) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_position(position.into());
+                    self.$member.lock()?.set_position(position.into());
 
                     Ok(())
                 }
 
                 pub fn set_direction(&self, direction: impl Into<[f32; 3]>) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_direction(direction.into());
+                    self.$member.lock()?.set_direction(direction.into());
 
                     Ok(())
                 }
 
                 pub fn set_attenuation(&self, attenuation: f32) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_attenuation(attenuation);
+                    self.$member.lock()?.set_attenuation(attenuation);
 
                     Ok(())
                 }
 
                 pub fn set_max_volume(&self, max_volume: f32) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_max_volume(max_volume);
+                    self.$member.lock()?.set_max_volume(max_volume);
 
                     Ok(())
                 }
 
                 pub fn set_min_volume(&self, min_volume: f32) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_min_volume(min_volume);
+                    self.$member.lock()?.set_min_volume(min_volume);
 
                     Ok(())
                 }
 
                 pub fn set_max_distance(&self, max_distance: f32) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_max_distance(max_distance);
+                    self.$member.lock()?.set_max_distance(max_distance);
 
                     Ok(())
                 }
 
                 pub fn set_min_distance(&self, min_distance: f32) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_reference_distance(min_distance);
+                    self.$member.lock()?.set_reference_distance(min_distance);
 
                     Ok(())
                 }
 
                 pub fn set_relative(&self, s: bool) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_relative(s);
+                    self.$member.lock()?.set_relative(s);
 
                     Ok(())
                 }
 
                 pub fn set_pitch(&self, pitch: f32) -> VerboseResult<()> {
-                    self.$member.try_borrow_mut()?.set_pitch(pitch);
+                    self.$member.lock()?.set_pitch(pitch);
 
                     Ok(())
                 }
@@ -131,9 +131,19 @@ macro_rules! sound_ctor {
                     let mut reverb = self.reverb.try_borrow_mut()?;
                     *reverb = reverb_effect;
 
-                    self.$member.try_borrow_mut()?.connect(&reverb);
+                    self.$member.lock()?.connect(&reverb);
 
                     Ok(())
+                }
+            }
+
+            impl ClearQueueObject for $struct_name {
+                fn end_looping(&self) -> VerboseResult<()>{
+                    self.stop_looping()
+                }
+
+                fn is_playing(&self) -> VerboseResult<bool> {
+                    Ok(self.$member.lock()?.is_playing())
                 }
             }
 
@@ -146,6 +156,11 @@ macro_rules! sound_ctor {
 
 sound_ctor!((Sound, ALSound, sound), (Music, ALMusic, music));
 
+trait ClearQueueObject {
+    fn end_looping(&self) -> VerboseResult<()>;
+    fn is_playing(&self) -> VerboseResult<bool>;
+}
+
 impl Sound {
     fn from_data(
         path: &str,
@@ -156,7 +171,7 @@ impl Sound {
 
         Ok(Arc::new(Sound {
             duration: sound.get_duration(),
-            sound: RefCell::new(sound),
+            sound: Mutex::new(sound),
             path: path.to_string(),
             sound_type: sound_type.to_string(),
             reverb: RefCell::new(None),
@@ -164,16 +179,14 @@ impl Sound {
     }
 
     pub fn block(&self) -> VerboseResult<()> {
-        let sound = self.sound.try_borrow()?;
+        let sound = self.sound.lock()?;
         while sound.is_playing() {}
 
         Ok(())
     }
 
     pub fn set_air_absorption_factor(&self, factor: f32) -> VerboseResult<()> {
-        self.sound
-            .try_borrow_mut()?
-            .set_air_absorption_factor(factor);
+        self.sound.lock()?.set_air_absorption_factor(factor);
 
         Ok(())
     }
@@ -198,6 +211,8 @@ pub struct SoundHandler {
 
     // 'clever' data handling
     data: HashMap<String, Rc<RefCell<SoundData>>>,
+
+    clear_queue: Vec<Arc<dyn ClearQueueObject>>,
 }
 
 impl SoundHandler {
@@ -214,6 +229,8 @@ impl SoundHandler {
             music: Vec::new(),
 
             data: HashMap::new(),
+
+            clear_queue: Vec::new(),
         })
     }
 
@@ -252,7 +269,7 @@ impl SoundHandler {
             None => {
                 let sound = Sound::new(path, sound_type)?;
                 self.data
-                    .insert(path.to_string(), sound.sound.try_borrow()?.get_datas());
+                    .insert(path.to_string(), sound.sound.lock()?.get_datas());
 
                 sound
             }
@@ -265,7 +282,7 @@ impl SoundHandler {
         };
 
         // set volume
-        if let Ok(mut internal_sound) = sound.sound.try_borrow_mut() {
+        if let Ok(mut internal_sound) = sound.sound.lock() {
             internal_sound.set_volume(volume);
         }
 
@@ -286,7 +303,7 @@ impl SoundHandler {
         let music = Music::new(path, "music")?;
 
         // set volume
-        if let Ok(mut internal_music) = music.music.try_borrow_mut() {
+        if let Ok(mut internal_music) = music.music.lock() {
             internal_music.set_volume(self.volume_info.music_volume);
         }
 
@@ -313,7 +330,7 @@ impl SoundHandler {
 
                 // iterate every music to set its volume
                 for music in self.music.iter() {
-                    if let Ok(mut internal_music) = music.music.try_borrow_mut() {
+                    if let Ok(mut internal_music) = music.music.lock() {
                         internal_music.set_volume(volume);
                     }
                 }
@@ -331,7 +348,7 @@ impl SoundHandler {
                     if let Some(sounds) = self.sounds.get(sound_type) {
                         // iterate every sound and set its volume
                         for sound in sounds.iter() {
-                            if let Ok(mut internal_sound) = sound.sound.try_borrow_mut() {
+                            if let Ok(mut internal_sound) = sound.sound.lock() {
                                 internal_sound.set_volume(volume);
                             }
                         }
@@ -349,7 +366,7 @@ impl SoundHandler {
         // check if sounds are playing
         for sounds in self.sounds.values() {
             for sound in sounds {
-                if let Ok(mut internal_sound) = sound.sound.try_borrow_mut() {
+                if let Ok(mut internal_sound) = sound.sound.lock() {
                     // if sound is playing, pause it
                     if let State::Playing = internal_sound.get_state() {
                         internal_sound.pause();
@@ -359,7 +376,7 @@ impl SoundHandler {
         }
 
         for music in self.music.iter() {
-            if let Ok(mut internal_music) = music.music.try_borrow_mut() {
+            if let Ok(mut internal_music) = music.music.lock() {
                 // if music is playing, pause it
                 if let State::Playing = internal_music.get_state() {
                     internal_music.pause();
@@ -372,7 +389,7 @@ impl SoundHandler {
         // check if sounds are paused
         for sounds in self.sounds.values() {
             for sound in sounds {
-                if let Ok(mut internal_sound) = sound.sound.try_borrow_mut() {
+                if let Ok(mut internal_sound) = sound.sound.lock() {
                     // if sound is paused, resume it
                     if let State::Paused = internal_sound.get_state() {
                         internal_sound.play();
@@ -382,7 +399,7 @@ impl SoundHandler {
         }
 
         for music in self.music.iter() {
-            if let Ok(mut internal_music) = music.music.try_borrow_mut() {
+            if let Ok(mut internal_music) = music.music.lock() {
                 // if music is paused, resume it
                 if let State::Paused = internal_music.get_state() {
                     internal_music.play();
@@ -393,8 +410,25 @@ impl SoundHandler {
 
     pub fn remove_sound(&mut self, sound: &Arc<Sound>) -> VerboseResult<()> {
         if let Some(sounds) = self.sounds.get_mut(sound.sound_type()) {
-            erase_arc(sounds, sound);
+            if let Some(old_sound) = erase_arc(sounds, sound) {
+                old_sound.end_looping()?;
+                self.clear_queue.push(old_sound);
+            }
         }
+
+        Ok(())
+    }
+
+    pub(crate) fn check_clear_queue(&mut self) -> VerboseResult<()> {
+        let mut new_queue = Vec::new();
+
+        for sound in self.clear_queue.iter() {
+            if sound.is_playing()? {
+                new_queue.push(sound.clone());
+            }
+        }
+
+        self.clear_queue = new_queue;
 
         Ok(())
     }

@@ -43,6 +43,9 @@ pub struct Context {
     fallback: Mutex<Option<Box<dyn Fn(&str) -> VerboseResult<()> + Send + Sync>>>,
 
     push_events: Mutex<Vec<Box<dyn FnOnce() -> VerboseResult<()> + Send + Sync>>>,
+
+    // queue timer
+    last_check: Mutex<Duration>,
 }
 
 impl Context {
@@ -181,6 +184,15 @@ impl Context {
 
         while let Some(event) = push_events.pop() {
             event()?;
+        }
+
+        let one_second = Duration::from_secs(1);
+        let mut last_check = self.last_check.lock()?;
+
+        if (self.time() - *last_check) > one_second {
+            *last_check += one_second;
+
+            self.sound()?.check_clear_queue()?;
         }
 
         Ok(())
@@ -424,6 +436,8 @@ impl ContextBuilder {
             fallback: Mutex::new(None),
 
             push_events: Mutex::new(Vec::new()),
+
+            last_check: Mutex::new(Duration::from_secs(0)),
         });
 
         let weak_context = Arc::downgrade(&context);
