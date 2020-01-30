@@ -192,7 +192,10 @@ impl Context {
         if (self.time() - *last_check) > one_second {
             *last_check += one_second;
 
-            self.sound()?.check_clear_queue()?;
+            #[cfg(feature = "audio")]
+            {
+                self.sound()?.check_clear_queue()?;
+            }
         }
 
         Ok(())
