@@ -5,7 +5,7 @@ use crate::{impl_vk_handle_t, mappedmemory::VkMappedMemory};
 
 use std;
 use std::mem;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub struct BufferBuilder<'a, T> {
     flags: VkBufferCreateFlagBits,
@@ -138,6 +138,8 @@ impl<T: Clone> Buffer<T> {
     pub fn into_device_local(
         src_buffer: Arc<Buffer<T>>,
         command_buffer: &Arc<CommandBuffer>,
+        access_mask: impl Into<VkAccessFlagBits>,
+        stage: impl Into<VkPipelineStageFlagBits>,
     ) -> VerboseResult<Arc<Buffer<T>>> {
         let new_usage = (src_buffer.usage ^ VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
             | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -148,6 +150,7 @@ impl<T: Clone> Buffer<T> {
             .set_size(src_buffer.size)
             .build(src_buffer.device.clone())?;
 
+        // copy complete buffer
         command_buffer.copy_buffer(
             &src_buffer,
             &device_local_buffer,
@@ -156,6 +159,15 @@ impl<T: Clone> Buffer<T> {
                 dstOffset: 0,
                 size: src_buffer.byte_size(),
             }],
+        );
+
+        // make sure buffer is copied before using it
+        command_buffer.buffer_barrier(
+            &device_local_buffer,
+            VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            access_mask,
+            stage,
         );
 
         Ok(device_local_buffer)
