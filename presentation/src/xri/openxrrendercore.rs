@@ -1,9 +1,10 @@
 use openxr::{
-    CompositionLayerProjection, CompositionLayerProjectionView, Duration, EnvironmentBlendMode,
-    EventDataBuffer, Extent2Di, FrameStream, FrameWaiter, Instance as OpenXRInstance, Offset2Di,
-    Posef, Quaternionf, Rect2Di, ReferenceSpaceType, Session, SessionState, Space, Swapchain,
-    SwapchainCreateFlags, SwapchainCreateInfo, SwapchainSubImage, SwapchainUsageFlags, Vector3f,
-    View, ViewConfigurationType, ViewConfigurationView, Vulkan,
+    CompositionLayerProjection, CompositionLayerProjectionView, Duration as OpenXRDuration,
+    EnvironmentBlendMode, EventDataBuffer, Extent2Di, FrameStream, FrameWaiter,
+    Instance as OpenXRInstance, Offset2Di, Posef, Quaternionf, Rect2Di, ReferenceSpaceType,
+    Session, SessionState, Space, Swapchain, SwapchainCreateFlags, SwapchainCreateInfo,
+    SwapchainSubImage, SwapchainUsageFlags, Vector3f, View, ViewConfigurationType,
+    ViewConfigurationView, Vulkan,
 };
 
 use cgmath::{vec3, Matrix4, Quaternion, SquareMatrix};
@@ -17,6 +18,7 @@ use vulkan_rs::prelude::*;
 
 use std::mem;
 use std::sync::{Arc, Mutex, RwLock};
+use std::time::Duration;
 
 pub struct OpenXRRenderCore {
     instance: Arc<OpenXRInstance>,
@@ -430,8 +432,8 @@ impl RenderCore for OpenXRRenderCore {
         let right_eye_image_index = p_try!(right_eye_swapchain.acquire_image()) as usize;
 
         // rendering
-        p_try!(left_eye_swapchain.wait_image(Duration::INFINITE));
-        p_try!(right_eye_swapchain.wait_image(Duration::INFINITE));
+        p_try!(left_eye_swapchain.wait_image(OpenXRDuration::INFINITE));
+        p_try!(right_eye_swapchain.wait_image(OpenXRDuration::INFINITE));
 
         *self.current_image_indices.write()? =
             TargetMode::Stereo(left_eye_image_index, right_eye_image_index);
@@ -455,7 +457,7 @@ impl RenderCore for OpenXRRenderCore {
             self.render_backend.device().wait_for_fences(
                 &[&self.render_fence],
                 true,
-                2_000_000_000,
+                Duration::from_secs(1),
             )?;
             self.render_fence.reset();
         }

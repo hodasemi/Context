@@ -12,6 +12,7 @@ use std::mem::{size_of, MaybeUninit};
 use std::ptr;
 use std::slice;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use core::ffi::c_void;
 
@@ -173,11 +174,11 @@ impl Device {
         &self,
         fences: &[&Arc<Fence>],
         wait_all: bool,
-        timeout: u64,
+        timeout: Duration,
     ) -> VerboseResult<()> {
         let vkfences: Vec<VkFence> = fences.iter().map(|fence| fence.vk_handle()).collect();
 
-        self.device_wait_for_fences(vkfences.as_slice(), wait_all, timeout)?;
+        self.device_wait_for_fences(vkfences.as_slice(), wait_all, timeout.as_nanos() as u64)?;
 
         Ok(())
     }

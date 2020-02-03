@@ -9,6 +9,7 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering::SeqCst},
     Arc, Mutex,
 };
+use std::time::Duration;
 use std::u64;
 
 pub struct VulkanWindowRenderCore {
@@ -201,9 +202,11 @@ impl RenderCore for VulkanWindowRenderCore {
         }
 
         // make sure command_buffer is ready
-        self.render_backend
-            .device()
-            .wait_for_fences(&[&self.render_fence], true, 2_000_000_000)?;
+        self.render_backend.device().wait_for_fences(
+            &[&self.render_fence],
+            true,
+            Duration::from_secs(10),
+        )?;
         self.render_fence.reset();
 
         Ok(true)

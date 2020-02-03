@@ -15,6 +15,7 @@ use crate::{p_try, prelude::*, renderbackend::RenderBackend, RenderCoreCreateInf
 
 use std::mem::transmute;
 use std::sync::{Arc, Mutex, RwLock};
+use std::time::Duration;
 
 pub struct OpenVRRenderCore {
     compositor: Arc<Compositor>,
@@ -264,9 +265,11 @@ impl RenderCore for OpenVRRenderCore {
         }
 
         // make sure command_buffer is ready
-        self.render_backend
-            .device()
-            .wait_for_fences(&[&self.render_fence], true, 2_000_000_000)?;
+        self.render_backend.device().wait_for_fences(
+            &[&self.render_fence],
+            true,
+            Duration::from_secs(10),
+        )?;
         self.render_fence.reset();
 
         let (left_images, right_images) = self.images.stereo()?;

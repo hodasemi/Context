@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 use std::cmp;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 enum ImageSourceType {
     Empty,
@@ -980,7 +981,7 @@ fn into_layout(image: &Image, layout: VkImageLayout) -> VerboseResult<()> {
 
     image
         .device
-        .wait_for_fences(&[&fence], true, 1_000_000_000)?;
+        .wait_for_fences(&[&fence], true, Duration::from_secs(1))?;
 
     Ok(())
 }
@@ -1080,7 +1081,7 @@ where
 
     queue_lock.submit(Some(&fence), &[submit])?;
 
-    device.wait_for_fences(&[&fence], true, 1_000_000_000)?;
+    device.wait_for_fences(&[&fence], true, Duration::from_secs(1))?;
 
     Ok(())
 }
@@ -1159,7 +1160,7 @@ fn copy_images_to_imagearray(
 
     queue_lock.submit(Some(&fence), &[submit])?;
 
-    device.wait_for_fences(&[&fence], true, 1_000_000_000)?;
+    device.wait_for_fences(&[&fence], true, Duration::from_secs(1))?;
 
     Ok(())
 }
