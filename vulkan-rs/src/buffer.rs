@@ -136,28 +136,28 @@ impl<T: Clone> Buffer<T> {
     }
 
     pub fn into_device_local(
-        src_buffer: Arc<Buffer<T>>,
+        &self,
         command_buffer: &Arc<CommandBuffer>,
         access_mask: impl Into<VkAccessFlagBits>,
         stage: impl Into<VkPipelineStageFlagBits>,
     ) -> VerboseResult<Arc<Buffer<T>>> {
-        let new_usage = (src_buffer.usage ^ VK_BUFFER_USAGE_TRANSFER_SRC_BIT)
-            | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        let new_usage =
+            (self.usage ^ VK_BUFFER_USAGE_TRANSFER_SRC_BIT) | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
         let device_local_buffer = Buffer::builder()
             .set_memory_properties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
             .set_usage(new_usage)
-            .set_size(src_buffer.size)
-            .build(src_buffer.device.clone())?;
+            .set_size(self.size)
+            .build(self.device.clone())?;
 
         // copy complete buffer
         command_buffer.copy_buffer(
-            &src_buffer,
+            &self,
             &device_local_buffer,
             &[VkBufferCopy {
                 srcOffset: 0,
                 dstOffset: 0,
-                size: src_buffer.byte_size(),
+                size: self.byte_size(),
             }],
         );
 
