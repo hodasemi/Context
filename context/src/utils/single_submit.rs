@@ -6,7 +6,7 @@ use std::time::Duration;
 pub struct SingleSubmit;
 
 impl SingleSubmit {
-    pub fn builder<F, T>(
+    pub fn submit<F, T>(
         command_buffer: &Arc<CommandBuffer>,
         queue: &Arc<Mutex<Queue>>,
         f: F,
