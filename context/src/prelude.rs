@@ -11,6 +11,9 @@ pub use crate::core::soundhandler::{Music, Sound, SoundHandler, VolumeInfo};
 pub use ears::{ReverbEffect, ReverbPreset};
 
 // render target
-pub use crate::utils::rendertarget::{ClearValue, CustomTarget, RenderTarget};
+pub use crate::utils::{
+    render_target::{ClearValue, CustomTarget, RenderTarget},
+    single_submit::SingleSubmit,
+};
 
 pub use presentation::{input::eventsystem::PresentationEventType, prelude::*};
