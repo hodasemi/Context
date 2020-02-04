@@ -6,14 +6,14 @@ use std::time::Duration;
 pub struct SingleSubmit;
 
 impl SingleSubmit {
-    pub fn builder<'a, F>(
-        command_buffer: &'a Arc<CommandBuffer>,
-        queue: Arc<Mutex<Queue>>,
+    pub fn builder<F>(
+        command_buffer: &Arc<CommandBuffer>,
+        queue: &Arc<Mutex<Queue>>,
         f: F,
         timeout: Duration,
     ) -> VerboseResult<()>
     where
-        F: FnOnce(&'a Arc<CommandBuffer>) -> VerboseResult<()>,
+        F: FnOnce(&Arc<CommandBuffer>) -> VerboseResult<()>,
     {
         command_buffer.begin(VkCommandBufferBeginInfo::new(
             VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
