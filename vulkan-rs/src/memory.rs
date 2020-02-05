@@ -16,7 +16,7 @@ pub struct Memory<T> {
 }
 
 impl<T> Memory<T> {
-    pub fn buffer_memory(
+    pub(crate) fn buffer_memory(
         device: &Arc<Device>,
         memory_properties: VkMemoryPropertyFlagBits,
         buffer: VkBuffer,
@@ -30,7 +30,7 @@ impl<T> Memory<T> {
         Ok(memory)
     }
 
-    pub fn image_memory(
+    pub(crate) fn image_memory(
         device: &Arc<Device>,
         memory_properties: VkMemoryPropertyFlagBits,
         image: VkImage,

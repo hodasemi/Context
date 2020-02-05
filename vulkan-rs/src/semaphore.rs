@@ -34,3 +34,17 @@ impl Drop for Semaphore {
         self.device.destroy_semaphore(self.semaphore);
     }
 }
+
+use crate::{ffi::*, handle_ffi_result};
+
+#[no_mangle]
+pub extern "C" fn create_semaphore(device: *const Device) -> *const Semaphore {
+    let device = unsafe { Arc::from_raw(device) };
+
+    handle_ffi_result!(Semaphore::new(device))
+}
+
+#[no_mangle]
+pub extern "C" fn destroy_semaphore(semaphore: *const Semaphore) {
+    let _semaphore = unsafe { Arc::from_raw(semaphore) };
+}

@@ -60,3 +60,26 @@ impl Drop for Fence {
         self.device.destroy_fence(self.fence);
     }
 }
+
+use crate::{ffi::*, handle_ffi_result};
+
+#[no_mangle]
+pub extern "C" fn create_fence(signaled: bool, device: *const Device) -> *const Fence {
+    let device = unsafe { Arc::from_raw(device) };
+
+    let fence_res = Fence::builder().set_signaled(signaled).build(device);
+
+    handle_ffi_result!(fence_res)
+}
+
+#[no_mangle]
+pub extern "C" fn reset_fence(fence: *const Fence) -> bool {
+    let fence = unsafe { Arc::from_raw(fence) };
+
+    fence.reset()
+}
+
+#[no_mangle]
+pub extern "C" fn destroy_fence(fence: *const Fence) {
+    let _fence = unsafe { Arc::from_raw(fence) };
+}

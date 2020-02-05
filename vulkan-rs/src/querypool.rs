@@ -50,10 +50,6 @@ impl QueryPool {
 
         Ok(data)
     }
-
-    pub fn vk_query_pool(&self) -> VkQueryPool {
-        self.query_pool
-    }
 }
 
 impl VulkanDevice for QueryPool {

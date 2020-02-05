@@ -31,6 +31,8 @@ pub mod shadermodule;
 pub mod surface;
 pub mod swapchain;
 
+pub mod ffi;
+
 mod loader;
 
 pub enum OutOfDate<T> {

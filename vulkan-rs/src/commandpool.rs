@@ -72,3 +72,44 @@ impl Drop for CommandPool {
         self.device.destroy_command_pool(self.command_pool);
     }
 }
+
+use crate::{ffi::*, handle_ffi_result};
+
+#[no_mangle]
+pub extern "C" fn create_command_pool(
+    flags: VkCommandPoolCreateFlagBits,
+    queue_family_index: u32,
+    device: *const Device,
+) -> *const CommandPool {
+    let device = unsafe { Arc::from_raw(device) };
+
+    let pool_res = CommandPool::builder()
+        .set_flags(flags)
+        .set_queue_family_index(queue_family_index)
+        .build(device);
+
+    handle_ffi_result!(pool_res)
+}
+
+#[no_mangle]
+pub extern "C" fn allocate_primary_buffer(
+    command_pool: *const CommandPool,
+) -> *const CommandBuffer {
+    let pool = unsafe { Arc::from_raw(command_pool) };
+
+    handle_ffi_result!(CommandPool::allocate_primary_buffer(&pool))
+}
+
+#[no_mangle]
+pub extern "C" fn allocate_secondary_buffer(
+    command_pool: *const CommandPool,
+) -> *const CommandBuffer {
+    let pool = unsafe { Arc::from_raw(command_pool) };
+
+    handle_ffi_result!(CommandPool::allocate_secondary_buffer(&pool))
+}
+
+#[no_mangle]
+pub extern "C" fn destroy_command_pool(command_pool: *const CommandPool) {
+    let _pool = unsafe { Arc::from_raw(command_pool) };
+}

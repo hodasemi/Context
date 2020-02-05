@@ -698,12 +698,8 @@ impl CommandBuffer {
         query: u32,
         pipeline_stage: impl Into<VkPipelineStageFlagBits>,
     ) {
-        self.device.cmd_write_timestamp(
-            self.buffer,
-            pipeline_stage,
-            query_pool.vk_query_pool(),
-            query,
-        );
+        self.device
+            .cmd_write_timestamp(self.buffer, pipeline_stage, query_pool.vk_handle(), query);
     }
 
     pub fn build_acceleration_structure<T>(
@@ -763,7 +759,7 @@ impl CommandBuffer {
             self.buffer,
             &vk_handles,
             query_type,
-            query_pool.vk_query_pool(),
+            query_pool.vk_handle(),
             first_query,
         )
     }

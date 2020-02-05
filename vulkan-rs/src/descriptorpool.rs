@@ -119,3 +119,42 @@ impl Drop for DescriptorPool {
         self.device.destroy_descriptor_pool(self.descriptor_pool);
     }
 }
+
+use crate::{ffi::*, handle_ffi_result};
+
+#[no_mangle]
+pub extern "C" fn create_descriptor_pool(
+    flags: VkDescriptorPoolCreateFlagBits,
+    descriptor_count: u32,
+    descriptor_set_layout: *const DescriptorSetLayout,
+    device: *const Device,
+) -> *const DescriptorPool {
+    let device = unsafe { Arc::from_raw(device) };
+    let layout = unsafe { Arc::from_raw(descriptor_set_layout) };
+
+    let pool_res = DescriptorPool::builder()
+        .set_flags(flags)
+        .set_descriptor_set_count(descriptor_count)
+        .set_layout(layout)
+        .build(device);
+
+    handle_ffi_result!(pool_res)
+}
+
+#[no_mangle]
+pub extern "C" fn reset_descriptor_pool(descriptor_pool: *const DescriptorPool) -> bool {
+    let pool = unsafe { Arc::from_raw(descriptor_pool) };
+
+    match pool.reset() {
+        Ok(_) => true,
+        Err(err) => {
+            update_last_error(err);
+
+            false
+        }
+    }
+}
+
+pub extern "C" fn destroy_descriptor_pool(descriptor_pool: *const DescriptorPool) {
+    let _pool = unsafe { Arc::from_raw(descriptor_pool) };
+}
