@@ -33,6 +33,7 @@ pub mod swapchain;
 
 pub mod ffi;
 
+mod allocator;
 mod loader;
 
 pub enum OutOfDate<T> {

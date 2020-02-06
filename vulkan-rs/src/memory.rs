@@ -1,4 +1,4 @@
-use crate::impl_vk_handle_t;
+use crate::allocator::block::Block;
 use crate::prelude::*;
 
 use utilities::prelude::*;
@@ -10,7 +10,7 @@ use std::sync::Arc;
 pub struct Memory<T> {
     device: Arc<Device>,
 
-    memory: VkDeviceMemory,
+    block: Block,
 
     data_type: PhantomData<T>,
 }
@@ -25,7 +25,7 @@ impl<T> Memory<T> {
 
         let memory = Self::new(device, memory_requirements, memory_properties)?;
 
-        device.bind_buffer_memory(buffer, memory.vk_handle(), 0)?;
+        device.bind_buffer_memory(buffer, memory.block.memory(), 0)?;
 
         Ok(memory)
     }
@@ -39,7 +39,7 @@ impl<T> Memory<T> {
 
         let memory = Self::new(device, memory_requirements, memory_properties)?;
 
-        device.bind_image_memory(image, memory.vk_handle(), 0)?;
+        device.bind_image_memory(image, memory.block.memory(), 0)?;
 
         Ok(memory)
     }
@@ -52,17 +52,20 @@ impl<T> Memory<T> {
         let memory_type_index = device
             .memory_type_from_properties(memory_requirements.memoryTypeBits, memory_properties)?;
 
-        let memory_ci = VkMemoryAllocateInfo::new(memory_requirements.size, memory_type_index);
-
-        let memory = device.allocate_memory(&memory_ci)?;
+        let block =
+            device.allocate_memory_from_allocator(memory_requirements.size, memory_type_index)?;
 
         Ok(Arc::new(Memory {
             device: device.clone(),
 
-            memory,
+            block,
 
             data_type: PhantomData,
         }))
+    }
+
+    pub(crate) fn vk_handle(&self) -> VkDeviceMemory {
+        self.block.memory()
     }
 }
 
@@ -73,21 +76,20 @@ impl<T> VulkanDevice for Memory<T> {
 }
 
 impl<T: Clone> Memory<T> {
-    pub fn map(
-        &self,
-        length: VkDeviceSize,
-        offset: VkDeviceSize,
-    ) -> VerboseResult<VkMappedMemory<'_, T>> {
-        Ok(self
-            .device
-            .map_memory(self.memory, offset, length, VK_MEMORY_MAP_NULL_BIT)?)
+    pub fn map(&self, length: VkDeviceSize) -> VerboseResult<VkMappedMemory<'_, T>> {
+        debug_assert!(length <= length * std::mem::size_of::<T>() as VkDeviceSize);
+
+        Ok(self.device.map_memory(
+            self.block.memory(),
+            self.block.offset,
+            length,
+            VK_MEMORY_MAP_NULL_BIT,
+        )?)
     }
 }
 
-impl_vk_handle_t!(Memory, VkDeviceMemory, memory);
-
 impl<T> Drop for Memory<T> {
     fn drop(&mut self) {
-        self.device.free_memory(self.memory);
+        self.device.free_memory_from_allocator(&self.block).unwrap();
     }
 }

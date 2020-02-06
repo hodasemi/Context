@@ -116,23 +116,19 @@ pub struct Buffer<T> {
 
 impl<T: Clone> Buffer<T> {
     pub fn fill(&self, data: &[T]) -> VerboseResult<()> {
-        let mut buffer_map = self.map(data.len() as VkDeviceSize, 0)?;
+        let mut buffer_map = self.map(data.len() as VkDeviceSize)?;
 
         buffer_map.copy(data);
 
         Ok(())
     }
 
-    pub fn map(
-        &self,
-        length: VkDeviceSize,
-        offset: VkDeviceSize,
-    ) -> VerboseResult<VkMappedMemory<'_, T>> {
-        self.memory.map(length, offset)
+    pub fn map(&self, length: VkDeviceSize) -> VerboseResult<VkMappedMemory<'_, T>> {
+        self.memory.map(length)
     }
 
     pub fn map_complete(&self) -> VerboseResult<VkMappedMemory<'_, T>> {
-        self.memory.map(self.size, 0)
+        self.memory.map(self.size)
     }
 
     pub fn into_device_local(
@@ -232,3 +228,12 @@ impl<T> Drop for Buffer<T> {
         self.device.destroy_buffer(self.buffer);
     }
 }
+
+// use crate::{ffi::*, handle_ffi_result};
+
+// pub trait FFIBuffer {}
+
+// #[no_mangle]
+// pub extern "C" fn create_buffer(device: *const Device) -> *const dyn FFIBuffer {
+//     todo!()
+// }

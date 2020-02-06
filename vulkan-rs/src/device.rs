@@ -1,5 +1,6 @@
 use utilities::prelude::*;
 
+use crate::allocator::{block::Block, device_allocator::DeviceAllocator};
 use crate::impl_vk_handle;
 use crate::loader::*;
 use crate::mappedmemory::VkMappedMemory;
@@ -44,6 +45,8 @@ pub struct Device {
 
     physical_device: Arc<PhysicalDevice>,
     device: VkDevice,
+
+    memory_allocator: Mutex<DeviceAllocator>,
 }
 
 impl Device {
@@ -130,6 +133,8 @@ impl Device {
 
             physical_device,
             device,
+
+            memory_allocator: Mutex::new(DeviceAllocator::new(2)),
         }))
     }
 
@@ -410,6 +415,31 @@ impl Device {
 
             memory_requirements.assume_init()
         }
+    }
+
+    pub(crate) fn allocate_memory_from_allocator(
+        &self,
+        allocation_size: VkDeviceSize,
+        memory_type_index: u32,
+    ) -> VerboseResult<Block> {
+        let alignment = self
+            .physical_device
+            .properties()
+            .limits
+            .minMemoryMapAlignment;
+
+        self.memory_allocator.lock()?.allocate(
+            self,
+            allocation_size,
+            memory_type_index,
+            alignment as u64,
+        )
+    }
+
+    pub(crate) fn free_memory_from_allocator(&self, block: &Block) -> VerboseResult<()> {
+        self.memory_allocator.lock()?.deallocate(block);
+
+        Ok(())
     }
 
     pub fn allocate_memory(
