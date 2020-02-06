@@ -134,7 +134,8 @@ impl Device {
             physical_device,
             device,
 
-            memory_allocator: Mutex::new(DeviceAllocator::new(2)),
+            // request chunks in 100 MiB
+            memory_allocator: Mutex::new(DeviceAllocator::new(104857600)),
         }))
     }
 
