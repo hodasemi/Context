@@ -52,8 +52,11 @@ impl<T> Memory<T> {
         let memory_type_index = device
             .memory_type_from_properties(memory_requirements.memoryTypeBits, memory_properties)?;
 
-        let block =
-            device.allocate_memory_from_allocator(memory_requirements.size, memory_type_index)?;
+        let block = device.allocate_memory_from_allocator(
+            memory_requirements.size,
+            memory_type_index,
+            memory_requirements.alignment,
+        )?;
 
         Ok(Arc::new(Memory {
             device: device.clone(),

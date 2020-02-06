@@ -421,19 +421,11 @@ impl Device {
         &self,
         allocation_size: VkDeviceSize,
         memory_type_index: u32,
+        alignment: VkDeviceSize,
     ) -> VerboseResult<Block> {
-        let alignment = self
-            .physical_device
-            .properties()
-            .limits
-            .minMemoryMapAlignment;
-
-        self.memory_allocator.lock()?.allocate(
-            self,
-            allocation_size,
-            memory_type_index,
-            alignment as u64,
-        )
+        self.memory_allocator
+            .lock()?
+            .allocate(self, allocation_size, memory_type_index, alignment)
     }
 
     pub(crate) fn free_memory_from_allocator(&self, block: &Block) -> VerboseResult<()> {
