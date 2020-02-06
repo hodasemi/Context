@@ -32,7 +32,7 @@ impl Chunk {
         alignment: VkDeviceSize,
     ) -> VerboseResult<Option<Block>> {
         if self.size < size {
-            create_error!("chunk is too small for requested size");
+            return Ok(None);
         }
 
         let mut result_block = None;
