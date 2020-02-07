@@ -25,7 +25,7 @@ impl<T> Memory<T> {
 
         let memory = Self::new(device, memory_requirements, memory_properties)?;
 
-        device.bind_buffer_memory(buffer, memory.block.memory(), 0)?;
+        device.bind_buffer_memory(buffer, memory.block.memory(), memory.block.offset)?;
 
         Ok(memory)
     }
@@ -39,7 +39,7 @@ impl<T> Memory<T> {
 
         let memory = Self::new(device, memory_requirements, memory_properties)?;
 
-        device.bind_image_memory(image, memory.block.memory(), 0)?;
+        device.bind_image_memory(image, memory.block.memory(), memory.block.offset)?;
 
         Ok(memory)
     }
