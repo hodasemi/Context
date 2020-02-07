@@ -264,7 +264,8 @@ impl AccelerationStructure {
             None => None,
         };
 
-        let scratch_buffer = Self::create_scratch_buffer(&self.device, self.scratch_requirements)?;
+        let scratch_buffer =
+            Self::create_scratch_buffer(&self.device, self.scratch_requirements.clone())?;
 
         command_buffer.build_acceleration_structure(
             &self.info,
@@ -394,15 +395,14 @@ impl AccelerationStructure {
             device,
             acceleration_structure,
             VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_OBJECT_NV,
-        );
-
-        let result_size_in_bytes = memory_requirements.memoryRequirements.size;
+        )
+        .memoryRequirements;
 
         // create result buffer
         let result_buffer = Buffer::builder()
             .set_usage(VK_BUFFER_USAGE_RAY_TRACING_BIT_NV)
             .set_memory_properties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-            .set_size(result_size_in_bytes)
+            .force_requirements(memory_requirements)
             .build(device.clone())?;
 
         // bind the result buffer memory to the acceleration structure

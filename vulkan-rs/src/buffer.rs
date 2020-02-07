@@ -69,7 +69,7 @@ impl<'a, T: Clone> BufferBuilder<'a, T> {
     pub fn build(self, device: Arc<Device>) -> VerboseResult<Arc<Buffer<T>>> {
         let size = match self.data {
             Some(data) => data.len() as VkDeviceSize,
-            None => match self.forced_requirements {
+            None => match &self.forced_requirements {
                 Some(memory_requirements) => memory_requirements.size,
                 None => self.size,
             },

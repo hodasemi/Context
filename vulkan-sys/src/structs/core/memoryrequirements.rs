@@ -3,7 +3,7 @@ use crate::prelude::*;
 use std::cmp::Ordering;
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VkMemoryRequirements {
     pub size: VkDeviceSize,
     pub alignment: VkDeviceSize,
