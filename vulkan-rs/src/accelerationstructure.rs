@@ -193,7 +193,7 @@ impl AccelerationStructureBuilder {
 
         let acceleration_structure = device.create_acceleration_structure(&as_ci)?;
 
-        let scratch_size =
+        let scratch_requirements =
             AccelerationStructure::scratch_buffer_size(&device, acceleration_structure);
         let result_buffer =
             AccelerationStructure::create_result_buffer(&device, acceleration_structure)?;
@@ -211,7 +211,7 @@ impl AccelerationStructureBuilder {
 
             result_buffer,
 
-            scratch_size,
+            scratch_requirements,
             geometry_instances: if self.instances.is_empty() {
                 None
             } else {
@@ -231,7 +231,7 @@ pub struct AccelerationStructure {
 
     result_buffer: Arc<Buffer<u8>>,
 
-    scratch_size: VkDeviceSize,
+    scratch_requirements: VkMemoryRequirements,
     geometry_instances: Option<Vec<VkGeometryInstanceNV>>,
 }
 
@@ -264,7 +264,7 @@ impl AccelerationStructure {
             None => None,
         };
 
-        let scratch_buffer = Self::create_scratch_buffer(&self.device, self.scratch_size)?;
+        let scratch_buffer = Self::create_scratch_buffer(&self.device, self.scratch_requirements)?;
 
         command_buffer.build_acceleration_structure(
             &self.info,
@@ -343,7 +343,7 @@ impl AccelerationStructure {
     fn scratch_buffer_size(
         device: &Arc<Device>,
         acceleration_structure: VkAccelerationStructureNV,
-    ) -> VkDeviceSize {
+    ) -> VkMemoryRequirements {
         let build_memory_requirements = Self::memory_requirements(
             device,
             acceleration_structure,
@@ -368,21 +368,19 @@ impl AccelerationStructure {
         );
 
         // make scratch size the maximum of both values
-        build_memory_requirements
-            .size
-            .max(update_memory_requirements.size)
+        build_memory_requirements.max(update_memory_requirements)
     }
 
     #[inline]
     fn create_scratch_buffer(
         device: &Arc<Device>,
-        scratch_size_in_bytes: VkDeviceSize,
+        scratch_requirements: VkMemoryRequirements,
     ) -> VerboseResult<Arc<Buffer<u8>>> {
         // create scratch buffer
         Buffer::builder()
             .set_usage(VK_BUFFER_USAGE_RAY_TRACING_BIT_NV)
             .set_memory_properties(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-            .set_size(scratch_size_in_bytes)
+            .force_requirements(scratch_requirements)
             .build(device.clone())
     }
 

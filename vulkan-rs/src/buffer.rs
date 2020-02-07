@@ -14,11 +14,19 @@ pub struct BufferBuilder<'a, T> {
     sharing_mode: VkSharingMode,
     data: Option<&'a [T]>,
     size: VkDeviceSize,
+
+    forced_requirements: Option<VkMemoryRequirements>,
 }
 
 impl<'a, T> BufferBuilder<'a, T> {
     pub fn set_usage(mut self, usage: impl Into<VkBufferUsageFlagBits>) -> Self {
         self.usage = usage.into();
+
+        self
+    }
+
+    pub(crate) fn force_requirements(mut self, memory_requirements: VkMemoryRequirements) -> Self {
+        self.forced_requirements = Some(memory_requirements);
 
         self
     }
@@ -61,7 +69,10 @@ impl<'a, T: Clone> BufferBuilder<'a, T> {
     pub fn build(self, device: Arc<Device>) -> VerboseResult<Arc<Buffer<T>>> {
         let size = match self.data {
             Some(data) => data.len() as VkDeviceSize,
-            None => self.size,
+            None => match self.forced_requirements {
+                Some(memory_requirements) => memory_requirements.size,
+                None => self.size,
+            },
         };
 
         if size == 0 {
@@ -80,7 +91,15 @@ impl<'a, T: Clone> BufferBuilder<'a, T> {
         let buffer = device.create_buffer(&buffer_ci)?;
 
         // create memory
-        let memory = Memory::buffer_memory(&device, self.set_memory_properties, buffer)?;
+        let memory = match self.forced_requirements {
+            Some(memory_requirements) => Memory::forced_requirements(
+                &device,
+                self.set_memory_properties,
+                buffer,
+                memory_requirements,
+            )?,
+            None => Memory::buffer_memory(&device, self.set_memory_properties, buffer)?,
+        };
 
         let buffer = Arc::new(Buffer {
             device,
@@ -179,6 +198,8 @@ impl<T> Buffer<T> {
             sharing_mode: VK_SHARING_MODE_EXCLUSIVE,
             data: None,
             size: 0,
+
+            forced_requirements: None,
         }
     }
 

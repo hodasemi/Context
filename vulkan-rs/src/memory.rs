@@ -16,6 +16,19 @@ pub struct Memory<T> {
 }
 
 impl<T> Memory<T> {
+    pub(crate) fn forced_requirements(
+        device: &Arc<Device>,
+        memory_properties: VkMemoryPropertyFlagBits,
+        buffer: VkBuffer,
+        memory_requirements: VkMemoryRequirements,
+    ) -> VerboseResult<Arc<Memory<T>>> {
+        let memory = Self::new(device, memory_requirements, memory_properties)?;
+
+        device.bind_buffer_memory(buffer, memory.block.memory(), memory.block.offset)?;
+
+        Ok(memory)
+    }
+
     pub(crate) fn buffer_memory(
         device: &Arc<Device>,
         memory_properties: VkMemoryPropertyFlagBits,
@@ -23,11 +36,7 @@ impl<T> Memory<T> {
     ) -> VerboseResult<Arc<Memory<T>>> {
         let memory_requirements = device.buffer_memory_requirements(buffer);
 
-        let memory = Self::new(device, memory_requirements, memory_properties)?;
-
-        device.bind_buffer_memory(buffer, memory.block.memory(), memory.block.offset)?;
-
-        Ok(memory)
+        Self::forced_requirements(device, memory_properties, buffer, memory_requirements)
     }
 
     pub(crate) fn image_memory(
