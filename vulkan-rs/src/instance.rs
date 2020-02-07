@@ -355,56 +355,71 @@ impl Instance {
     ) -> VkBool32 {
         let mut output: String = String::new();
 
-        if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) != 0 {
-            output += "INFO: ";
-        } else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) != 0 {
-            output += "WARNING: ";
-        } else if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) != 0 {
-            output += "PERFORMANCE: ";
-        } else if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) != 0 {
-            output += "ERROR: ";
-        } else if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) != 0 {
-            output += "DEBUG: ";
-        }
+        output += match flags {
+            VK_DEBUG_REPORT_INFORMATION_BIT_EXT => "INFO",
+            VK_DEBUG_REPORT_WARNING_BIT_EXT => "WARNING",
+            VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT => "PERFORMANCE",
+            VK_DEBUG_REPORT_ERROR_BIT_EXT => "ERROR",
+            VK_DEBUG_REPORT_DEBUG_BIT_EXT => "DEBUG",
+        };
 
-        output += "OBJ( ";
+        output += ": OBJ( ";
 
-        match object_type {
-            VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT => output += "UNKNOWN",
-            VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT => output += "INSTANCE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT => output += "PHYSICAL DEVICE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT => output += "DEVICE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT => output += "QUEUE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT => output += "SEMAPHORE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT => output += "COMMAND BUFFER",
-            VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT => output += "FENCE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT => output += "DEVICE MEMORY",
-            VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT => output += "BUFFER",
-            VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT => output += "IMAGE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT => output += "EVENT",
-            VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT => output += "QUERY POOL",
-            VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT => output += "BUFFER VIEW",
-            VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT => output += "IMAGE VIEW",
-            VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT => output += "SHADER MODULE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT => output += "PIPELINE CACHE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT => output += "PIPELINE LAYOUT",
-            VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT => output += "RENDER PASS",
-            VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT => output += "PIPELINE",
-            VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT => {
-                output += "DESCRIPTOR SET LAYOUT"
+        output += match object_type {
+            VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT => "UNKNOWN",
+            VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT => "INSTANCE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT => "PHYSICAL DEVICE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT => "DEVICE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT => "QUEUE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT => "SEMAPHORE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT => "COMMAND BUFFER",
+            VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT => "FENCE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT => "DEVICE MEMORY",
+            VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT => "BUFFER",
+            VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT => "IMAGE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT => "EVENT",
+            VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT => "QUERY POOL",
+            VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT => "BUFFER VIEW",
+            VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT => "IMAGE VIEW",
+            VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT => "SHADER MODULE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT => "PIPELINE CACHE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT => "PIPELINE LAYOUT",
+            VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT => "RENDER PASS",
+            VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT => "PIPELINE",
+            VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT => "DESCRIPTOR SET LAYOUT",
+            VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT => "SAMPLER",
+            VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT => "DESCRIPTOR POOL",
+            VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT => "DESCRIPTOR SET",
+            VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT => "FRAME BUFFER",
+            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT => "COMMAND POOL",
+            VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT => "SURFACE KHR",
+            VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT => "SWAPCHAIN KHR",
+            VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT => "DEBUG REPORT",
+            VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_KHR_EXT => "DISPLAY KHR",
+            VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT => "DISPLAY MODE KHR",
+            VK_DEBUG_REPORT_OBJECT_TYPE_OBJECT_TABLE_NVX_EXT => "OBJECT TABLE NVX",
+            VK_DEBUG_REPORT_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX_EXT => {
+                "INDIRECT COMMANDS LAYOUT NVX"
             }
-            VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT => output += "SAMPLER",
-            VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT => output += "DESCRIPTOR POOL",
-            VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT => output += "DESCRIPTOR SET",
-            VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT => output += "FRAMEBUFFER",
-            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT => output += "COMMAND POOL",
-            VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT => output += "SURFACE KHR",
-            VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT => output += "SWAPCHAIN KHR",
-            VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT => output += "DEBUG REPORT",
-        }
+            VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT => "VALIDATION CACHE ",
+            VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT => "SAMPLER YCBCR CONVERSION ",
+            VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT => {
+                "DESCRIPTOR UPDATE TEMPLATE "
+            }
+            VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV_EXT => {
+                "ACCELERATION STRUCTURE NV"
+            }
+        };
 
         let tmp1 = unsafe { CString::from_raw(msg as *mut c_char) };
-        let tmp2 = tmp1.into_string().unwrap();
+        let tmp2 = match tmp1.into_string() {
+            Ok(string) => string,
+            Err(err) => {
+                println!("{}", err);
+
+                return VK_FALSE;
+            }
+        };
 
         output += " ):\n\t";
         output += tmp2.as_ref();
@@ -422,25 +437,20 @@ impl Instance {
     ) -> VkBool32 {
         let mut output = String::new();
 
-        if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) != 0 {
-            output += "VERBOSE:";
-        } else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0 {
-            output += "INFO:";
-        } else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0 {
-            output += "WARNING:";
-        } else if (message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 {
-            output += "ERROR:";
-        }
+        output += match message_severity {
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT => "VERBOSE",
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT => "INFO",
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => "WARNING",
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT => "ERROR",
+        };
 
-        output += "TYPE( ";
+        output += ": TYPE( ";
 
-        if (message_type & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) != 0 {
-            output += "GENERAL";
-        } else if (message_type & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0 {
-            output += "VALIDATION";
-        } else if (message_type & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0 {
-            output += "PERFORMANCE";
-        }
+        output += match message_type {
+            VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT => "GENERAL",
+            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT => "VALIDATION",
+            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT => "PERFORMANCE",
+        };
 
         output += " )";
 
@@ -450,47 +460,45 @@ impl Instance {
         for object in objects {
             output += "OBJ( ";
 
-            match object.objectType {
-                VK_OBJECT_TYPE_UNKNOWN => output += "UNKNOWN",
-                VK_OBJECT_TYPE_INSTANCE => output += "INSTANCE",
-                VK_OBJECT_TYPE_PHYSICAL_DEVICE => output += "PHYSICAL DEVICE",
-                VK_OBJECT_TYPE_DEVICE => output += "DEVICE",
-                VK_OBJECT_TYPE_QUEUE => output += "QUEUE",
-                VK_OBJECT_TYPE_SEMAPHORE => output += "SEMAPHORE",
-                VK_OBJECT_TYPE_COMMAND_BUFFER => output += "COMMAND BUFFER",
-                VK_OBJECT_TYPE_FENCE => output += "FENCE",
-                VK_OBJECT_TYPE_DEVICE_MEMORY => output += "DEVICE MEMORY",
-                VK_OBJECT_TYPE_BUFFER => output += "BUFFER",
-                VK_OBJECT_TYPE_IMAGE => output += "IMAGE",
-                VK_OBJECT_TYPE_EVENT => output += "EVENT",
-                VK_OBJECT_TYPE_QUERY_POOL => output += "QUERY POOL",
-                VK_OBJECT_TYPE_BUFFER_VIEW => output += "BUFFER VIEW",
-                VK_OBJECT_TYPE_IMAGE_VIEW => output += "IMAGE VIEW",
-                VK_OBJECT_TYPE_SHADER_MODULE => output += "SHADER MODULE",
-                VK_OBJECT_TYPE_PIPELINE_CACHE => output += "PIPELINE CACHE",
-                VK_OBJECT_TYPE_PIPELINE_LAYOUT => output += "PIPELINE LAYOUT",
-                VK_OBJECT_TYPE_RENDER_PASS => output += "RENDER PASS",
-                VK_OBJECT_TYPE_PIPELINE => output += "PIPELINE",
-                VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT => output += "DESCRIPTOR SET LAYOUT",
-                VK_OBJECT_TYPE_SAMPLER => output += "SAMPLER",
-                VK_OBJECT_TYPE_DESCRIPTOR_POOL => output += "DESCRIPTOR POOL",
-                VK_OBJECT_TYPE_DESCRIPTOR_SET => output += "DESCRIPTOR SET",
-                VK_OBJECT_TYPE_FRAMEBUFFER => output += "FRAMEBUFFER",
-                VK_OBJECT_TYPE_COMMAND_POOL => output += "COMMAND POOL",
-                VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION => output += "SAMPLER YCBCR CONVERSION",
-                VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE => output += "DESCRIPTOR UPDATE TEMPLATE",
-                VK_OBJECT_TYPE_SURFACE_KHR => output += "SURFACE KHR",
-                VK_OBJECT_TYPE_SWAPCHAIN_KHR => output += "SWAPCHAIN KHR",
-                VK_OBJECT_TYPE_DISPLAY_KHR => output += "DISPLAY KHR",
-                VK_OBJECT_TYPE_DISPLAY_MODE_KHR => output += "DISPLAY MODE KHR",
-                VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT => output += "DEBUG REPORT CALLBACK EXT",
-                VK_OBJECT_TYPE_OBJECT_TABLE_NVX => output += "OBJECT TABLE NVX",
-                VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX => {
-                    output += "INDIRECT COMMANDS LAYOUT NVX"
-                }
-                VK_OBJECT_TYPE_VALIDATION_CACHE_EXT => output += "VALIDATION CACHE EXT",
-                VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT => output += "DEBUG UTILS MESSENGER EXT",
-            }
+            output += match object.objectType {
+                VK_OBJECT_TYPE_UNKNOWN => "UNKNOWN",
+                VK_OBJECT_TYPE_INSTANCE => "INSTANCE",
+                VK_OBJECT_TYPE_PHYSICAL_DEVICE => "PHYSICAL DEVICE",
+                VK_OBJECT_TYPE_DEVICE => "DEVICE",
+                VK_OBJECT_TYPE_QUEUE => "QUEUE",
+                VK_OBJECT_TYPE_SEMAPHORE => "SEMAPHORE",
+                VK_OBJECT_TYPE_COMMAND_BUFFER => "COMMAND BUFFER",
+                VK_OBJECT_TYPE_FENCE => "FENCE",
+                VK_OBJECT_TYPE_DEVICE_MEMORY => "DEVICE MEMORY",
+                VK_OBJECT_TYPE_BUFFER => "BUFFER",
+                VK_OBJECT_TYPE_IMAGE => "IMAGE",
+                VK_OBJECT_TYPE_EVENT => "EVENT",
+                VK_OBJECT_TYPE_QUERY_POOL => "QUERY POOL",
+                VK_OBJECT_TYPE_BUFFER_VIEW => "BUFFER VIEW",
+                VK_OBJECT_TYPE_IMAGE_VIEW => "IMAGE VIEW",
+                VK_OBJECT_TYPE_SHADER_MODULE => "SHADER MODULE",
+                VK_OBJECT_TYPE_PIPELINE_CACHE => "PIPELINE CACHE",
+                VK_OBJECT_TYPE_PIPELINE_LAYOUT => "PIPELINE LAYOUT",
+                VK_OBJECT_TYPE_RENDER_PASS => "RENDER PASS",
+                VK_OBJECT_TYPE_PIPELINE => "PIPELINE",
+                VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT => "DESCRIPTOR SET LAYOUT",
+                VK_OBJECT_TYPE_SAMPLER => "SAMPLER",
+                VK_OBJECT_TYPE_DESCRIPTOR_POOL => "DESCRIPTOR POOL",
+                VK_OBJECT_TYPE_DESCRIPTOR_SET => "DESCRIPTOR SET",
+                VK_OBJECT_TYPE_FRAMEBUFFER => "FRAME BUFFER",
+                VK_OBJECT_TYPE_COMMAND_POOL => "COMMAND POOL",
+                VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION => "SAMPLER YCBCR CONVERSION",
+                VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE => "DESCRIPTOR UPDATE TEMPLATE",
+                VK_OBJECT_TYPE_SURFACE_KHR => "SURFACE KHR",
+                VK_OBJECT_TYPE_SWAPCHAIN_KHR => "SWAPCHAIN KHR",
+                VK_OBJECT_TYPE_DISPLAY_KHR => "DISPLAY KHR",
+                VK_OBJECT_TYPE_DISPLAY_MODE_KHR => "DISPLAY MODE KHR",
+                VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT => "DEBUG REPORT CALLBACK EXT",
+                VK_OBJECT_TYPE_OBJECT_TABLE_NVX => "OBJECT TABLE NVX",
+                VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX => "INDIRECT COMMANDS LAYOUT NVX",
+                VK_OBJECT_TYPE_VALIDATION_CACHE_EXT => "VALIDATION CACHE EXT",
+                VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT => "DEBUG UTILS MESSENGER EXT",
+            };
 
             output += " ) ";
         }
