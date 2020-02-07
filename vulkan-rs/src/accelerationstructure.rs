@@ -344,22 +344,33 @@ impl AccelerationStructure {
         device: &Arc<Device>,
         acceleration_structure: VkAccelerationStructureNV,
     ) -> VkDeviceSize {
-        let mut memory_requirements = Self::memory_requirements(
+        let build_memory_requirements = Self::memory_requirements(
             device,
             acceleration_structure,
             VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV,
-        );
+        )
+        .memoryRequirements;
 
-        let scratch_size_in_bytes = memory_requirements.memoryRequirements.size;
-
-        memory_requirements = Self::memory_requirements(
+        let update_memory_requirements = Self::memory_requirements(
             device,
             acceleration_structure,
             VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_UPDATE_SCRATCH_NV,
+        )
+        .memoryRequirements;
+
+        debug_assert_eq!(
+            build_memory_requirements.alignment,
+            update_memory_requirements.alignment
+        );
+        debug_assert_eq!(
+            build_memory_requirements.memoryTypeBits,
+            update_memory_requirements.memoryTypeBits
         );
 
         // make scratch size the maximum of both values
-        scratch_size_in_bytes.max(memory_requirements.memoryRequirements.size)
+        build_memory_requirements
+            .size
+            .max(update_memory_requirements.size)
     }
 
     #[inline]
@@ -411,7 +422,7 @@ impl AccelerationStructure {
         let bind_info = VkBindAccelerationStructureMemoryInfoNV::new(
             acceleration_structure,
             buffer.vk_handle(),
-            0,
+            buffer.offset(),
             &[],
         );
 

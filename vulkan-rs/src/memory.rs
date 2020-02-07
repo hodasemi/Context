@@ -10,7 +10,7 @@ use std::sync::Arc;
 pub struct Memory<T> {
     device: Arc<Device>,
 
-    block: Block,
+    pub(crate) block: Block,
 
     data_type: PhantomData<T>,
 }
