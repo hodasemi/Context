@@ -3,6 +3,8 @@ use utilities::prelude::*;
 
 use super::{block::Block, chunk::Chunk, chunk_allocator::ChunkAllocator};
 
+use std::sync::Arc;
+
 pub struct DeviceAllocator {
     chunk_allocator: ChunkAllocator,
     chunks: Vec<Chunk>,
@@ -18,7 +20,7 @@ impl DeviceAllocator {
 
     pub fn allocate(
         &mut self,
-        device: &Device,
+        device: Arc<Device>,
         size: VkDeviceSize,
         memory_type_index: u32,
         alignment: VkDeviceSize,

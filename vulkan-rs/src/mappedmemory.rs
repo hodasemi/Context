@@ -1,4 +1,3 @@
-use crate::prelude::*;
 use core::slice::{Iter, IterMut};
 use std::ops::{Index, IndexMut};
 
@@ -8,21 +7,11 @@ where
     T: Clone,
 {
     data: &'a mut [T],
-    device: &'a Device,
-    memory: VkDeviceMemory,
 }
 
 impl<'a, T: Clone> VkMappedMemory<'a, T> {
-    pub(crate) fn new(
-        device: &'a Device,
-        memory: VkDeviceMemory,
-        data: &'a mut [T],
-    ) -> VkMappedMemory<'a, T> {
-        VkMappedMemory {
-            data,
-            device,
-            memory,
-        }
+    pub(crate) fn new(data: &'a mut [T]) -> VkMappedMemory<'a, T> {
+        VkMappedMemory { data }
     }
 
     pub fn copy(&mut self, data: &[T]) {
@@ -49,11 +38,5 @@ impl<'a, T: Clone> Index<usize> for VkMappedMemory<'a, T> {
 impl<'a, T: Clone> IndexMut<usize> for VkMappedMemory<'a, T> {
     fn index_mut(&mut self, index: usize) -> &mut T {
         &mut self.data[index]
-    }
-}
-
-impl<'a, T: Clone> Drop for VkMappedMemory<'a, T> {
-    fn drop(&mut self) {
-        self.device.unmap_memory(self.memory);
     }
 }

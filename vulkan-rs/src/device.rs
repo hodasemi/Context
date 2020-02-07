@@ -3,7 +3,6 @@ use utilities::prelude::*;
 use crate::allocator::{block::Block, device_allocator::DeviceAllocator};
 use crate::impl_vk_handle;
 use crate::loader::*;
-use crate::mappedmemory::VkMappedMemory;
 use crate::prelude::*;
 use crate::Extensions;
 
@@ -419,14 +418,17 @@ impl Device {
     }
 
     pub(crate) fn allocate_memory_from_allocator(
-        &self,
+        me: &Arc<Device>,
         allocation_size: VkDeviceSize,
         memory_type_index: u32,
         alignment: VkDeviceSize,
     ) -> VerboseResult<Block> {
-        self.memory_allocator
-            .lock()?
-            .allocate(self, allocation_size, memory_type_index, alignment)
+        me.memory_allocator.lock()?.allocate(
+            me.clone(),
+            allocation_size,
+            memory_type_index,
+            alignment,
+        )
     }
 
     pub(crate) fn free_memory_from_allocator(&self, block: &Block) -> VerboseResult<()> {
@@ -464,17 +466,15 @@ impl Device {
         };
     }
 
-    pub fn map_memory<U: Clone>(
+    pub(crate) fn map_memory_raw(
         &self,
         memory: VkDeviceMemory,
         offset: VkDeviceSize,
-        length: VkDeviceSize,
+        size: VkDeviceSize,
         flags: impl Into<VkMemoryMapFlags>,
-    ) -> VerboseResult<VkMappedMemory<'_, U>> {
+    ) -> VerboseResult<*mut c_void> {
         unsafe {
             let mut data = MaybeUninit::uninit();
-
-            let size = length * size_of::<U>() as VkDeviceSize;
 
             let result = self.device_functions.vkMapMemory(
                 self.device,
@@ -486,14 +486,27 @@ impl Device {
             );
 
             if result == VK_SUCCESS {
-                let slice =
-                    slice::from_raw_parts_mut(data.assume_init() as *mut U, length as usize);
-                Ok(VkMappedMemory::new(self, memory, slice))
+                Ok(data.assume_init())
             } else {
                 create_error!(format!("failed mapping memory {:?}", result))
             }
         }
     }
+
+    // pub fn map_memory<U: Clone>(
+    //     &self,
+    //     memory: VkDeviceMemory,
+    //     offset: VkDeviceSize,
+    //     length: VkDeviceSize,
+    //     flags: impl Into<VkMemoryMapFlags>,
+    // ) -> VerboseResult<VkMappedMemory<'_, U>> {
+    //     let size = length * size_of::<U>() as VkDeviceSize;
+
+    //     let ptr = self.map_memory_raw(memory, offset, size, flags)?;
+
+    //     let slice = unsafe { slice::from_raw_parts_mut(ptr as *mut U, length as usize) };
+    //     Ok(VkMappedMemory::new(self, memory, slice))
+    // }
 
     pub fn unmap_memory(&self, memory: VkDeviceMemory) {
         unsafe { self.device_functions.vkUnmapMemory(self.device, memory) };

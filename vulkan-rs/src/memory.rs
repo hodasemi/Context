@@ -61,7 +61,8 @@ impl<T> Memory<T> {
         let memory_type_index = device
             .memory_type_from_properties(memory_requirements.memoryTypeBits, memory_properties)?;
 
-        let block = device.allocate_memory_from_allocator(
+        let block = Device::allocate_memory_from_allocator(
+            device,
             memory_requirements.size,
             memory_type_index,
             memory_requirements.alignment,
@@ -89,14 +90,7 @@ impl<T> VulkanDevice for Memory<T> {
 
 impl<T: Clone> Memory<T> {
     pub fn map(&self, length: VkDeviceSize) -> VerboseResult<VkMappedMemory<'_, T>> {
-        debug_assert!(length <= length * std::mem::size_of::<T>() as VkDeviceSize);
-
-        Ok(self.device.map_memory(
-            self.block.memory(),
-            self.block.offset,
-            length,
-            VK_MEMORY_MAP_NULL_BIT,
-        )?)
+        self.block.map(length)
     }
 }
 

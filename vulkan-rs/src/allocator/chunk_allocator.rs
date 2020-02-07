@@ -3,6 +3,8 @@ use utilities::prelude::*;
 
 use super::chunk::Chunk;
 
+use std::sync::Arc;
+
 pub struct ChunkAllocator {
     size: VkDeviceSize,
 }
@@ -16,7 +18,7 @@ impl ChunkAllocator {
 
     pub fn allocate(
         &self,
-        device: &Device,
+        device: Arc<Device>,
         size: VkDeviceSize,
         memory_type_index: u32,
     ) -> VerboseResult<Chunk> {
