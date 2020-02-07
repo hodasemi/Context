@@ -187,9 +187,7 @@ impl<T> Buffer<T> {
     }
 
     pub(crate) fn byte_size(&self) -> VkDeviceSize {
-        debug_assert!(self.size * mem::size_of::<T>() as VkDeviceSize == self.memory.block.size);
-
-        self.memory.block.size
+        self.size * mem::size_of::<T>() as VkDeviceSize
     }
 
     pub fn size(&self) -> VkDeviceSize {
