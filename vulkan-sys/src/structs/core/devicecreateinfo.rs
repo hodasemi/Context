@@ -26,7 +26,7 @@ impl<'a> VkDeviceCreateInfo<'a> {
         flags: T,
         queue_create_info: &'a [VkDeviceQueueCreateInfo],
         enabled_extension_names: &'a VkNames,
-        enabled_features: &'a [VkPhysicalDeviceFeatures],
+        enabled_features: &'a VkPhysicalDeviceFeatures,
     ) -> Self
     where
         T: Into<VkDeviceCreateFlagBits>,
@@ -42,7 +42,7 @@ impl<'a> VkDeviceCreateInfo<'a> {
             ppEnabledLayerNames: ptr::null(),
             enabledExtensionCount: enabled_extension_names.c_names().len() as u32,
             ppEnabledExtensionNames: enabled_extension_names.c_names().as_ptr(),
-            pEnabledFeatures: enabled_features.as_ptr(),
+            pEnabledFeatures: enabled_features as *const _,
         }
     }
 }

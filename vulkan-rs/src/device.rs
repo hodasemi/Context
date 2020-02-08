@@ -10,7 +10,6 @@ use std::cmp::min;
 use std::fmt;
 use std::mem::{size_of, MaybeUninit};
 use std::ptr;
-use std::slice;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -27,6 +26,8 @@ Extensions!(DeviceExtensions, {
     (memory_priority, "VK_EXT_memory_priority"),
     (debug_marker, "VK_EXT_debug_marker"),
 });
+
+pub use vulkan_sys::prelude::VkPhysicalDeviceFeatures as DeviceFeatures;
 
 pub struct MemoryHeap {
     pub usage: VkDeviceSize,
@@ -53,6 +54,7 @@ impl Device {
         physical_device: Arc<PhysicalDevice>,
         extensions: DeviceExtensions,
         queue_infos: &[VkDeviceQueueCreateInfo],
+        requested_device_features: DeviceFeatures,
     ) -> VerboseResult<Arc<Device>> {
         let device_extensions = physical_device.extensions();
 
@@ -79,13 +81,15 @@ impl Device {
 
         println!();
 
-        let local_device_features = physical_device.features();
+        if !requested_device_features.is_subset_of(&physical_device.features()) {
+            create_error!("Device does not support requested features");
+        }
 
         let mut device_ci = VkDeviceCreateInfo::new(
             VK_DEVICE_CREATE_NULL_BIT,
             queue_infos,
             &names,
-            slice::from_ref(&local_device_features),
+            &requested_device_features,
         );
 
         let descriptor_indexing_features = physical_device.descriptor_indexing_features();

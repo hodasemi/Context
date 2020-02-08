@@ -13,6 +13,7 @@ impl VulkanCore {
         presentation_core: &PresentationCore,
         vulkan_debug_info: &VulkanDebugInfo,
         app_info: &ApplicationInfo,
+        device_features: DeviceFeatures,
     ) -> VerboseResult<VulkanCore> {
         // --- create instance ---
         // application info
@@ -87,7 +88,12 @@ impl VulkanCore {
             dev_exts.debug_marker = true;
         }
 
-        let device = Device::new(physical_device, dev_exts, &[queue_info.queue_create_info])?;
+        let device = Device::new(
+            physical_device,
+            dev_exts,
+            &[queue_info.queue_create_info],
+            device_features,
+        )?;
 
         let queue = Device::get_queue(
             &device,

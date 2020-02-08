@@ -6,7 +6,7 @@ pub use super::commandpool::CommandPool;
 pub use super::descriptorpool::DescriptorPool;
 pub use super::descriptorset::*;
 pub use super::descriptorsetlayout::DescriptorSetLayout;
-pub use super::device::{Device, DeviceExtensions};
+pub use super::device::{Device, DeviceExtensions, DeviceFeatures};
 pub use super::fence::Fence;
 pub use super::framebuffer::{Framebuffer, FramebufferBuilder};
 pub use super::googledisplaytiming::*;

@@ -224,6 +224,7 @@ pub struct ContextBuilder {
     os_specific_config: OsSpecificConfig,
 
     // vulkan core settings
+    device_features: DeviceFeatures,
     sample_count: VkSampleCountFlags,
     enable_raytracing: bool,
     render_core_create_info: RenderCoreCreateInfo,
@@ -273,6 +274,7 @@ impl<'a> Default for ContextBuilder {
             os_specific_config: OsSpecificConfig::default(),
 
             // vulkan core settings
+            device_features: DeviceFeatures::default(),
             sample_count: VK_SAMPLE_COUNT_1_BIT,
             enable_raytracing: false,
             render_core_create_info: RenderCoreCreateInfo {
@@ -329,6 +331,12 @@ impl ContextBuilder {
 
     pub fn set_os_specific_info(mut self, os_specific: OsSpecificConfig) -> Self {
         self.os_specific_config = os_specific;
+
+        self
+    }
+
+    pub fn set_device_features(mut self, device_features: DeviceFeatures) -> Self {
+        self.device_features = device_features;
 
         self
     }
@@ -411,7 +419,12 @@ impl ContextBuilder {
             PresentationCore::new(vr_mode, &self.window_create_info, self.app_info.clone())?;
 
         // vulkan core objects (VkInstance, VkDevice, ...)
-        let core = VulkanCore::new(&presentation, &self.vulkan_debug_info, &self.app_info)?;
+        let core = VulkanCore::new(
+            &presentation,
+            &self.vulkan_debug_info,
+            &self.app_info,
+            self.device_features,
+        )?;
 
         let os_specific = OsSpecific::new(&self.os_specific_config);
 
