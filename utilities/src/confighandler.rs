@@ -144,8 +144,10 @@ impl ConfigHandler {
                         let mut value_array = Vec::new();
 
                         for v in value_split {
-                            if !v.is_empty() {
-                                value_array.push(v.trim().to_string());
+                            let trimmed = v.trim();
+
+                            if !trimmed.is_empty() {
+                                value_array.push(trimmed.to_string());
                             }
                         }
 
