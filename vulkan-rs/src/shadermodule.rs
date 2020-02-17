@@ -3,7 +3,6 @@ use utilities::prelude::*;
 use crate::impl_vk_handle;
 use crate::prelude::*;
 
-use std::any::Any;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
@@ -127,30 +126,56 @@ impl Drop for ShaderModule {
     }
 }
 
-#[derive(Debug)]
-pub struct SpecializationConstants {
-    map_entries: Vec<VkSpecializationMapEntry>,
-    data: Box<dyn Any>,
+pub trait AddSpecializationConstant<T> {
+    fn add(&mut self, value: T, id: u32);
+}
 
-    vk_struct: VkSpecializationInfo,
+pub struct SpecializationConstants {
+    // store data as raw bytes
+    data: Vec<u8>,
+    entries: Vec<VkSpecializationMapEntry>,
+
+    info: VkSpecializationInfo,
 }
 
 impl SpecializationConstants {
-    pub fn new(data: Box<dyn Any>, map_entries: &[VkSpecializationMapEntry]) -> Self {
+    pub fn new() -> Self {
         let mut me = SpecializationConstants {
-            map_entries: map_entries.iter().map(|m| m.clone()).collect(),
-            data,
+            data: Vec::new(),
+            entries: Vec::new(),
 
-            vk_struct: VkSpecializationInfo::empty(),
+            info: VkSpecializationInfo::empty(),
         };
 
-        me.vk_struct.set_map_entries(&me.map_entries);
-        me.vk_struct.set_data(&me.data);
+        me.info.set_data(&me.data);
+        me.info.set_map_entries(&me.entries);
 
         me
     }
 
-    pub(crate) fn vk_info(&self) -> &VkSpecializationInfo {
-        &self.vk_struct
+    pub fn vk_handle(&self) -> &VkSpecializationInfo {
+        &self.info
     }
 }
+
+macro_rules! impl_add_specialization_constant {
+    ($($type: ty),+) => {
+        $(
+            impl AddSpecializationConstant<$type> for SpecializationConstants {
+                fn add(&mut self, value: $type, id: u32) {
+                    let bytes = value.to_ne_bytes();
+
+                    self.entries.push(VkSpecializationMapEntry {
+                        constantID: id,
+                        offset: self.data.len() as u32,
+                        size: bytes.len(),
+                    });
+
+                    self.data.extend(&bytes);
+                }
+            }
+        )+
+    };
+}
+
+impl_add_specialization_constant!(f32, f64, u64, i64, u32, i32, u16, i16, u8, i8, usize, isize);

@@ -125,7 +125,7 @@ impl RayTracingPipelineBuilder {
             .map(|(shader, specialization_constant)| {
                 let mut stage_info = shader.pipeline_stage_info();
                 if let Some(specialization_constant) = specialization_constant {
-                    stage_info.set_specialization_info(specialization_constant.vk_info());
+                    stage_info.set_specialization_info(specialization_constant.vk_handle());
                 }
 
                 stage_info
