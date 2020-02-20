@@ -5,8 +5,6 @@ use super::controlleraxis::ControllerAxis;
 use sdl2;
 use utilities::prelude::*;
 
-use std::error::Error;
-
 pub struct Controller {
     _sdl2_controller: sdl2::controller::GameController,
     deadzone: f32,
@@ -29,7 +27,7 @@ impl Controller {
 
             let sdl2_controller = match test {
                 Ok(controller) => controller,
-                Err(error) => create_error!(error.description().to_string()),
+                Err(error) => create_error!(error.to_string()),
             };
 
             let controller_axis = ControllerAxis::default();

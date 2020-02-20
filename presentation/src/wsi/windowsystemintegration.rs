@@ -14,7 +14,6 @@ use sdl2::Sdl;
 use utilities::prelude::*;
 use vulkan_rs::prelude::*;
 
-use std::error::Error;
 use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::Path;
@@ -191,7 +190,7 @@ impl WindowSystemIntegration {
 
         let window = match window_builder.build() {
             Ok(window) => window,
-            Err(build_error) => create_error!(build_error.description().to_string()),
+            Err(build_error) => create_error!(build_error.to_string()),
         };
 
         display_index = Some(window.display_index()? as usize);
