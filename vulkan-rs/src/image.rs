@@ -1,9 +1,12 @@
 use utilities::prelude::*;
 
+pub use image::ImageFormat;
+
 use crate::impl_vk_handle;
 use crate::prelude::*;
 
 use std::cmp;
+use std::io::{BufRead, Seek};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -724,7 +727,29 @@ impl Image {
     pub fn from_file(file: &str) -> VerboseResult<ImageBuilder> {
         let texture = match image::open(file) {
             Ok(tex) => tex.to_rgba(),
-            Err(err) => create_error!(format!("error loading image (\"{}\"): {}", file, err)),
+            Err(err) => create_error!(format!("error loading image (\"{}\"): {:?}", file, err)),
+        };
+
+        let (width, height) = texture.dimensions();
+
+        Ok(Self::from_raw(texture.into_raw(), width, height).format(VK_FORMAT_R8G8B8A8_UNORM))
+    }
+
+    /// Creates an `ImageBuilder` where you can define the image for your needs
+    ///
+    /// takes a BufReader and does the same as `raw_source`, but it
+    /// extracts all needed bits from the reader
+    ///
+    /// # Arguments
+    ///
+    /// * `reader` - BufReader of an file
+    pub fn from_reader(
+        reader: impl BufRead + Seek,
+        format: ImageFormat,
+    ) -> VerboseResult<ImageBuilder> {
+        let texture = match image::load(reader, format) {
+            Ok(tex) => tex.to_rgba(),
+            Err(err) => create_error!(format!("error loading image from reader: {:?}", err)),
         };
 
         let (width, height) = texture.dimensions();
