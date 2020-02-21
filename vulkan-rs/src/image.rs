@@ -1,12 +1,9 @@
 use utilities::prelude::*;
 
-pub use image::ImageFormat;
-
 use crate::impl_vk_handle;
 use crate::prelude::*;
 
 use std::cmp;
-use std::io::{BufRead, Seek};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -737,19 +734,20 @@ impl Image {
 
     /// Creates an `ImageBuilder` where you can define the image for your needs
     ///
-    /// takes a BufReader and does the same as `raw_source`, but it
-    /// extracts all needed bits from the reader
+    /// takes a byte slice and does the same as `raw_source`, but it
+    /// extracts all needed bits from the slice
+    ///
+    /// # Usage
+    ///
+    /// let mut image_builder = Image::from_slice(include_bytes!("path/to/file"))?;
     ///
     /// # Arguments
     ///
-    /// * `reader` - BufReader of an file
-    pub fn from_reader(
-        reader: impl BufRead + Seek,
-        format: ImageFormat,
-    ) -> VerboseResult<ImageBuilder> {
-        let texture = match image::load(reader, format) {
+    /// * `slice` - Slice of bytes
+    pub fn from_slice(data: &[u8]) -> VerboseResult<ImageBuilder> {
+        let texture = match image::load_from_memory(data) {
             Ok(tex) => tex.to_rgba(),
-            Err(err) => create_error!(format!("error loading image from reader: {:?}", err)),
+            Err(err) => create_error!(format!("error loading image from slice: {:?}", err)),
         };
 
         let (width, height) = texture.dimensions();
