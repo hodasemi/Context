@@ -89,11 +89,7 @@ impl DescriptorWrite {
                 images
                     .iter()
                     .map(|image| VkDescriptorImageInfo {
-                        sampler: image
-                            .sampler()
-                            .as_ref()
-                            .expect("image has no sampler attached")
-                            .vk_handle(),
+                        sampler: VkSampler::NULL_HANDLE,
                         imageView: image.vk_handle(),
                         imageLayout: image.image_layout().expect("image layout lock error"),
                     })
