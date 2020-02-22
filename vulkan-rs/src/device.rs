@@ -4,6 +4,7 @@ use crate::allocator::{block::Block, device_allocator::DeviceAllocator};
 use crate::impl_vk_handle;
 use crate::loader::*;
 use crate::prelude::*;
+use crate::sampler_manager::SamplerManager;
 use crate::Extensions;
 
 use std::cmp::min;
@@ -47,6 +48,7 @@ pub struct Device {
     device: VkDevice,
 
     memory_allocator: Mutex<DeviceAllocator>,
+    sampler_manager: Mutex<SamplerManager>,
 }
 
 impl Device {
@@ -139,6 +141,8 @@ impl Device {
 
             // request chunks in 100 MiB
             memory_allocator: Mutex::new(DeviceAllocator::new(104857600)),
+
+            sampler_manager: SamplerManager::new(),
         }))
     }
 
@@ -262,6 +266,13 @@ impl fmt::Debug for Device {
 
 impl Drop for Device {
     fn drop(&mut self) {
+        unsafe {
+            self.sampler_manager
+                .lock()
+                .expect("failed to lock sampler manager at drop of device")
+                .clear(self);
+        }
+
         self.destroy_device();
     }
 }
@@ -699,6 +710,15 @@ impl Device {
                 create_error!(format!("failed binding image to memory {:?}", result))
             }
         }
+    }
+
+    pub(crate) fn create_sampler_from_manager(
+        &self,
+        create_info: VkSamplerCreateInfo,
+    ) -> VerboseResult<Arc<Sampler>> {
+        self.sampler_manager
+            .lock()?
+            .create_sampler(create_info, self)
     }
 
     pub fn create_sampler(&self, create_info: &VkSamplerCreateInfo) -> VerboseResult<VkSampler> {

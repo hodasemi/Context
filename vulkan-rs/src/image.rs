@@ -3,7 +3,6 @@ use utilities::prelude::*;
 use crate::impl_vk_handle;
 use crate::prelude::*;
 
-use std::cmp;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -69,10 +68,11 @@ enum ImageBuilderInternalType {
 /// Implements the builder pattern for Image
 pub struct ImageBuilder {
     builder_type: ImageBuilderInternalType,
-    sampler_info: Option<VkSamplerCreateInfo>,
     components: VkComponentMapping,
     view_type: VkImageViewType,
     subresource_range: VkImageSubresourceRange,
+
+    sampler: Option<Arc<Sampler>>,
 }
 
 impl ImageBuilder {
@@ -80,7 +80,6 @@ impl ImageBuilder {
     fn new(internal_type: ImageBuilderInternalType) -> Self {
         ImageBuilder {
             builder_type: internal_type,
-            sampler_info: None,
             components: VkComponentMapping::default(),
             subresource_range: VkImageSubresourceRange {
                 aspectMask: VK_IMAGE_ASPECT_COLOR_BIT.into(),
@@ -90,6 +89,8 @@ impl ImageBuilder {
                 layerCount: 1,
             },
             view_type: VK_IMAGE_VIEW_TYPE_2D,
+
+            sampler: None,
         }
     }
 
@@ -106,11 +107,6 @@ impl ImageBuilder {
 
                 let image_view = device.create_image_view(&image_view_ci)?;
 
-                let sampler = match self.sampler_info {
-                    Some(sampler_info) => device.create_sampler(&sampler_info)?,
-                    None => VkSampler::NULL_HANDLE,
-                };
-
                 let image = Arc::new(Image {
                     device: device.clone(),
                     queue: queue.clone(),
@@ -119,7 +115,7 @@ impl ImageBuilder {
                     image_view,
                     memory: None,
                     attached: true,
-                    sampler,
+                    sampler: self.sampler,
 
                     format: preinitialized_image.format,
                     image_layout: Mutex::new(VK_IMAGE_LAYOUT_UNDEFINED),
@@ -146,7 +142,7 @@ impl ImageBuilder {
                         device,
                         queue,
                         &info,
-                        &self.sampler_info,
+                        self.sampler,
                         image_view_ci,
                     )?;
 
@@ -159,7 +155,7 @@ impl ImageBuilder {
                         device,
                         queue,
                         &info,
-                        &self.sampler_info,
+                        self.sampler,
                         image_view_ci,
                     )?;
 
@@ -172,7 +168,7 @@ impl ImageBuilder {
                         device,
                         queue,
                         &info,
-                        &self.sampler_info,
+                        self.sampler,
                         image_view_ci,
                     )?;
 
@@ -295,48 +291,54 @@ impl ImageBuilder {
         self
     }
 
-    pub fn mip_map_levels(mut self, levels: u32) -> Self {
-        match self.builder_type {
-            ImageBuilderInternalType::NewImage(ref mut info) => {
-                info.vk_image_create_info.mipLevels = levels;
-                self.subresource_range.levelCount = levels;
-
-                info.vk_image_create_info.usage |=
-                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
-                if let Some(ref mut sampler) = self.sampler_info {
-                    sampler.maxLod = levels as f32;
-                }
-            }
-            _ => panic!("wrong builder type in ImageBuilder"),
-        }
+    pub fn attach_sampler(mut self, sampler: Arc<Sampler>) -> Self {
+        self.sampler = Some(sampler);
 
         self
     }
 
-    pub fn max_mip_map_levels(mut self) -> Self {
-        match self.builder_type {
-            ImageBuilderInternalType::NewImage(ref mut info) => {
-                let levels = Self::calc_mip_map_levels(
-                    info.vk_image_create_info.extent.width,
-                    info.vk_image_create_info.extent.height,
-                );
+    // pub fn mip_map_levels(mut self, levels: u32) -> Self {
+    //     match self.builder_type {
+    //         ImageBuilderInternalType::NewImage(ref mut info) => {
+    //             info.vk_image_create_info.mipLevels = levels;
+    //             self.subresource_range.levelCount = levels;
 
-                info.vk_image_create_info.mipLevels = levels;
-                self.subresource_range.levelCount = levels;
+    //             info.vk_image_create_info.usage |=
+    //                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-                info.vk_image_create_info.usage |=
-                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    //             if let Some(ref mut sampler) = self.sampler_info {
+    //                 sampler.maxLod = levels as f32;
+    //             }
+    //         }
+    //         _ => panic!("wrong builder type in ImageBuilder"),
+    //     }
 
-                if let Some(ref mut sampler) = self.sampler_info {
-                    sampler.maxLod = levels as f32;
-                }
-            }
-            _ => panic!("wrong builder type in ImageBuilder"),
-        }
+    //     self
+    // }
 
-        self
-    }
+    // pub fn max_mip_map_levels(mut self) -> Self {
+    //     match self.builder_type {
+    //         ImageBuilderInternalType::NewImage(ref mut info) => {
+    //             let levels = Self::calc_mip_map_levels(
+    //                 info.vk_image_create_info.extent.width,
+    //                 info.vk_image_create_info.extent.height,
+    //             );
+
+    //             info.vk_image_create_info.mipLevels = levels;
+    //             self.subresource_range.levelCount = levels;
+
+    //             info.vk_image_create_info.usage |=
+    //                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+    //             if let Some(ref mut sampler) = self.sampler_info {
+    //                 sampler.maxLod = levels as f32;
+    //             }
+    //         }
+    //         _ => panic!("wrong builder type in ImageBuilder"),
+    //     }
+
+    //     self
+    // }
 
     pub fn aspect_mask(mut self, mask: VkImageAspectFlags) -> Self {
         self.subresource_range.aspectMask = mask.into();
@@ -358,177 +360,9 @@ impl ImageBuilder {
         self
     }
 
-    pub fn nearest_sampler(mut self) -> Self {
-        self.new_sampler(VkSamplerCreateInfo::new(
-            0,
-            VK_FILTER_NEAREST,
-            VK_FILTER_NEAREST,
-            VK_SAMPLER_MIPMAP_MODE_NEAREST,
-            VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            0.0,
-            false,
-            1.0,
-            false,
-            VK_COMPARE_OP_NEVER,
-            0.0,
-            0.0,
-            VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
-            false,
-        ));
-
-        self
-    }
-
-    pub fn pretty_sampler(mut self) -> Self {
-        self.new_sampler(VkSamplerCreateInfo::new(
-            0,
-            VK_FILTER_LINEAR,
-            VK_FILTER_LINEAR,
-            VK_SAMPLER_MIPMAP_MODE_LINEAR,
-            VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            0.0,
-            true,
-            8.0,
-            false,
-            VK_COMPARE_OP_NEVER,
-            0.0,
-            0.0,
-            VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE,
-            false,
-        ));
-
-        self
-    }
-
-    fn new_sampler(&mut self, mut sampler_info: VkSamplerCreateInfo) {
-        if let ImageBuilderInternalType::NewImage(ref mut info) = self.builder_type {
-            sampler_info.maxLod = info.vk_image_create_info.mipLevels as f32;
-            info.vk_image_create_info.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-        }
-
-        self.sampler_info = Some(sampler_info);
-    }
-
-    pub fn sampler_min_mag_filter(mut self, min_filter: VkFilter, mag_filter: VkFilter) -> Self {
-        match self.sampler_info {
-            Some(ref mut sampler_info) => {
-                sampler_info.minFilter = min_filter;
-                sampler_info.magFilter = mag_filter;
-            }
-            None => panic!("no sampler info attached in ImageBuilder"),
-        }
-
-        self
-    }
-
-    pub fn sampler_map_map_mode(mut self, mode: VkSamplerMipmapMode) -> Self {
-        match self.sampler_info {
-            Some(ref mut sampler_info) => {
-                sampler_info.mipmapMode = mode;
-            }
-            None => panic!("no sampler info attached in ImageBuilder"),
-        }
-
-        self
-    }
-
-    pub fn sampler_address_mode(
-        mut self,
-        u: VkSamplerAddressMode,
-        v: VkSamplerAddressMode,
-        w: VkSamplerAddressMode,
-    ) -> Self {
-        match self.sampler_info {
-            Some(ref mut sampler_info) => {
-                sampler_info.addressModeU = u;
-                sampler_info.addressModeV = v;
-                sampler_info.addressModeW = w;
-            }
-            None => panic!("no sampler info attached in ImageBuilder"),
-        }
-
-        self
-    }
-
-    pub fn sampler_min_load_bias(mut self, bias: f32) -> Self {
-        match self.sampler_info {
-            Some(ref mut sampler_info) => {
-                sampler_info.mipLodBias = bias;
-            }
-            None => panic!("no sampler info attached in ImageBuilder"),
-        }
-
-        self
-    }
-
-    pub fn sampler_anisotropy(mut self, anisotropy: f32) -> Self {
-        match self.sampler_info {
-            Some(ref mut sampler_info) => {
-                sampler_info.anisotropyEnable = VK_TRUE;
-                sampler_info.maxAnisotropy = anisotropy;
-            }
-            None => panic!("no sampler info attached in ImageBuilder"),
-        }
-
-        self
-    }
-
-    pub fn sampler_compare(mut self, compare_op: VkCompareOp) -> Self {
-        match self.sampler_info {
-            Some(ref mut sampler_info) => {
-                sampler_info.compareEnable = VK_TRUE;
-                sampler_info.compareOp = compare_op;
-            }
-            None => panic!("no sampler info attached in ImageBuilder"),
-        }
-
-        self
-    }
-
-    pub fn sampler_min_max_lod(mut self, min_lod: f32, max_lod: f32) -> Self {
-        match self.sampler_info {
-            Some(ref mut sampler_info) => {
-                sampler_info.minLod = min_lod;
-                sampler_info.maxLod = max_lod;
-            }
-            None => panic!("no sampler info attached in ImageBuilder"),
-        }
-
-        self
-    }
-
-    pub fn sampler_border_color(mut self, border_color: VkBorderColor) -> Self {
-        match self.sampler_info {
-            Some(ref mut sampler_info) => {
-                sampler_info.borderColor = border_color;
-            }
-            None => panic!("no sampler info attached in ImageBuilder"),
-        }
-
-        self
-    }
-
-    pub fn sampler_coordinates<T>(mut self, unnormalized_coordinates: T) -> Self
-    where
-        T: Into<VkBool32>,
-    {
-        match self.sampler_info {
-            Some(ref mut sampler_info) => {
-                sampler_info.unnormalizedCoordinates = unnormalized_coordinates.into()
-            }
-            None => panic!("no sampler info attached in ImageBuilder"),
-        }
-
-        self
-    }
-
-    fn calc_mip_map_levels(width: u32, height: u32) -> u32 {
-        1 + (cmp::max(width, height) as f32).log2().floor() as u32
-    }
+    // fn calc_mip_map_levels(width: u32, height: u32) -> u32 {
+    //     1 + (cmp::max(width, height) as f32).log2().floor() as u32
+    // }
 
     fn vk_image_view_create_info(&self) -> VkImageViewCreateInfo {
         VkImageViewCreateInfo::new(
@@ -550,7 +384,7 @@ impl ImageBuilder {
         device: &Arc<Device>,
         queue: &Arc<Mutex<Queue>>,
         info: &ImageCreateInfo,
-        sampler_info: &Option<VkSamplerCreateInfo>,
+        sampler: Option<Arc<Sampler>>,
         mut view_ci: VkImageViewCreateInfo,
     ) -> VerboseResult<Arc<Image>> {
         let format = view_ci.format;
@@ -561,11 +395,6 @@ impl ImageBuilder {
         view_ci.image = image;
 
         let image_view = device.create_image_view(&view_ci)?;
-
-        let sampler = match sampler_info {
-            Some(ref sampler_ci) => device.create_sampler(&sampler_ci)?,
-            None => VkSampler::NULL_HANDLE,
-        };
 
         Ok(Arc::new(Image {
             device: device.clone(),
@@ -647,7 +476,7 @@ pub struct Image {
 
     // optional handles
     memory: Option<Arc<Memory<u8>>>,
-    sampler: VkSampler,
+    sampler: Option<Arc<Sampler>>,
 
     // image information
     format: VkFormat,
@@ -849,6 +678,10 @@ impl Image {
         self.format
     }
 
+    pub fn sampler(&self) -> &Option<Arc<Sampler>> {
+        &self.sampler
+    }
+
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -948,15 +781,10 @@ impl VulkanDevice for Image {
 }
 
 impl_vk_handle!(Image, VkImage, image);
-impl_vk_handle!(Image, VkSampler, sampler);
 impl_vk_handle!(Image, VkImageView, image_view);
 
 impl Drop for Image {
     fn drop(&mut self) {
-        if self.sampler != VkSampler::NULL_HANDLE {
-            self.device.destroy_sampler(self.sampler);
-        }
-
         self.device.destroy_image_view(self.image_view);
 
         if !self.attached {

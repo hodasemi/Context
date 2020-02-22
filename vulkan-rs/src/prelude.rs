@@ -20,6 +20,7 @@ pub use super::pipelinelayout::{PipelineLayout, PipelineLayoutBuilder};
 pub use super::querypool::QueryPool;
 pub use super::queue::*;
 pub use super::renderpass::RenderPass;
+pub use super::sampler_manager::{Sampler, SamplerBuilder};
 pub use super::semaphore::Semaphore;
 pub use super::shadermodule::{
     AddSpecializationConstant, ShaderModule, ShaderType, SpecializationConstants,

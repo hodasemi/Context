@@ -1,10 +1,11 @@
 use crate::prelude::*;
 
+use std::hash::{Hash, Hasher};
 use std::os::raw::c_void;
 use std::ptr;
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct VkSamplerCreateInfo {
     pub sType: VkStructureType,
     pub pNext: *const c_void,
@@ -68,5 +69,32 @@ impl VkSamplerCreateInfo {
             borderColor: border_color,
             unnormalizedCoordinates: unnormalized_coordinates.into(),
         }
+    }
+}
+
+impl Eq for VkSamplerCreateInfo {}
+
+impl Hash for VkSamplerCreateInfo {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // ignore pNext and structure type
+
+        self.flags.hash(state);
+        self.magFilter.hash(state);
+        self.minFilter.hash(state);
+        self.mipmapMode.hash(state);
+        self.addressModeU.hash(state);
+        self.addressModeV.hash(state);
+        self.addressModeW.hash(state);
+        self.anisotropyEnable.hash(state);
+        self.compareEnable.hash(state);
+        self.compareOp.hash(state);
+        self.borderColor.hash(state);
+        self.unnormalizedCoordinates.hash(state);
+
+        // cast f32 into native endian byte slice
+        self.mipLodBias.to_ne_bytes().hash(state);
+        self.maxAnisotropy.to_ne_bytes().hash(state);
+        self.minLod.to_ne_bytes().hash(state);
+        self.maxLod.to_ne_bytes().hash(state);
     }
 }

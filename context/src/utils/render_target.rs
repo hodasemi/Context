@@ -385,7 +385,8 @@ impl<'a> RenderTargetBuilder<'a> {
             .memory_properties(0);
 
             if target_info.attach_sampler {
-                image_builder = image_builder.nearest_sampler();
+                image_builder =
+                    image_builder.attach_sampler(Sampler::nearest_sampler().build(device)?);
             }
 
             let image = image_builder.build(device, queue)?;

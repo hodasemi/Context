@@ -35,6 +35,7 @@ pub mod ffi;
 
 mod allocator;
 mod loader;
+mod sampler_manager;
 
 pub enum OutOfDate<T> {
     Ok(T),

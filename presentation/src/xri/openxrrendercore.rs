@@ -233,7 +233,7 @@ impl OpenXRRenderCore {
                     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                     usage,
                 )
-                .nearest_sampler()
+                .attach_sampler(Sampler::nearest_sampler().build(device)?)
                 .build(device, queue)?,
             );
         }
