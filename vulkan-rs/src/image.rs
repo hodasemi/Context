@@ -3,6 +3,7 @@ use utilities::prelude::*;
 use crate::impl_vk_handle;
 use crate::prelude::*;
 
+use std::cmp;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -294,6 +295,10 @@ impl ImageBuilder {
     pub fn attach_sampler(mut self, sampler: Arc<Sampler>) -> Self {
         self.sampler = Some(sampler);
 
+        if let ImageBuilderInternalType::NewImage(ref mut info) = self.builder_type {
+            info.vk_image_create_info.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+        }
+
         self
     }
 
@@ -316,29 +321,25 @@ impl ImageBuilder {
     //     self
     // }
 
-    // pub fn max_mip_map_levels(mut self) -> Self {
-    //     match self.builder_type {
-    //         ImageBuilderInternalType::NewImage(ref mut info) => {
-    //             let levels = Self::calc_mip_map_levels(
-    //                 info.vk_image_create_info.extent.width,
-    //                 info.vk_image_create_info.extent.height,
-    //             );
+    pub fn max_mip_map_levels(mut self) -> Self {
+        match self.builder_type {
+            ImageBuilderInternalType::NewImage(ref mut info) => {
+                let levels = Self::calc_mip_map_levels(
+                    info.vk_image_create_info.extent.width,
+                    info.vk_image_create_info.extent.height,
+                );
 
-    //             info.vk_image_create_info.mipLevels = levels;
-    //             self.subresource_range.levelCount = levels;
+                info.vk_image_create_info.mipLevels = levels;
+                self.subresource_range.levelCount = levels;
 
-    //             info.vk_image_create_info.usage |=
-    //                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+                info.vk_image_create_info.usage |=
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+            }
+            _ => panic!("wrong builder type in ImageBuilder"),
+        }
 
-    //             if let Some(ref mut sampler) = self.sampler_info {
-    //                 sampler.maxLod = levels as f32;
-    //             }
-    //         }
-    //         _ => panic!("wrong builder type in ImageBuilder"),
-    //     }
-
-    //     self
-    // }
+        self
+    }
 
     pub fn aspect_mask(mut self, mask: VkImageAspectFlags) -> Self {
         self.subresource_range.aspectMask = mask.into();
@@ -360,9 +361,9 @@ impl ImageBuilder {
         self
     }
 
-    // fn calc_mip_map_levels(width: u32, height: u32) -> u32 {
-    //     1 + (cmp::max(width, height) as f32).log2().floor() as u32
-    // }
+    fn calc_mip_map_levels(width: u32, height: u32) -> u32 {
+        1 + (cmp::max(width, height) as f32).log2().floor() as u32
+    }
 
     fn vk_image_view_create_info(&self) -> VkImageViewCreateInfo {
         VkImageViewCreateInfo::new(
