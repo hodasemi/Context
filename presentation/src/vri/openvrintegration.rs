@@ -74,14 +74,15 @@ impl OpenVRIntegration {
         Ok(())
     }
 
-    pub fn physical_device(&self, instance: &Arc<Instance>) -> VerboseResult<VkPhysicalDevice> {
+    pub fn physical_device(&self, instance: &Arc<Instance>) -> Option<VkPhysicalDevice> {
         unsafe {
-            let phys_dev = self
+            match self
                 .system
                 .vulkan_output_device(mem::transmute(instance.vk_handle()))
-                .ok_or("no physical device found")?;
-
-            Ok(mem::transmute(phys_dev))
+            {
+                Some(phys_dev) => Some(mem::transmute(phys_dev)),
+                None => None,
+            }
         }
     }
 

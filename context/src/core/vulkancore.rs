@@ -63,8 +63,14 @@ impl VulkanCore {
                 (queue_info, physical_device)
             }
             PresentationBackend::OpenVR(vri) => {
-                let physical_device =
-                    PhysicalDevice::from_raw(instance.clone(), vri.physical_device(&instance)?)?;
+                // Check if OpenVR can find an appropriate PhysicalDevice,
+                // otherwise fallback with using default routine
+                let physical_device = match vri.physical_device(&instance) {
+                    Some(physical_device_handle) => {
+                        PhysicalDevice::from_raw(instance.clone(), physical_device_handle)?
+                    }
+                    None => PhysicalDevice::new(instance.clone())?,
+                };
 
                 let queue_info = Queue::create_non_presentable_request_info(
                     &physical_device,

@@ -30,7 +30,7 @@ pub mod openvrintegration {
             unimplemented!()
         }
 
-        pub fn physical_device(&self, _: &Arc<Instance>) -> VerboseResult<VkPhysicalDevice> {
+        pub fn physical_device(&self, _: &Arc<Instance>) -> Option<VkPhysicalDevice> {
             unimplemented!()
         }
     }
