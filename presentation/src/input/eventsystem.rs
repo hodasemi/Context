@@ -260,7 +260,7 @@ impl EventSystem {
 
                         if selected_controller.is_some() {
                             // unwrap is save since we just tested for `is_some()`
-                            if selected_controller.as_ref().unwrap().read()?.id() as i32 == which {
+                            if selected_controller.as_ref().unwrap().read()?.id() == which {
                                 *selected_controller = None;
                             }
                         }
@@ -271,7 +271,7 @@ impl EventSystem {
 
                         for (i, controller_cell) in connected_controllers.iter().enumerate() {
                             let controller = controller_cell.read()?;
-                            if controller.id() as i32 == which {
+                            if controller.id() == which {
                                 remove_index = i;
                                 break;
                             }
@@ -296,7 +296,7 @@ impl EventSystem {
                     // only call back if the selected controller pressed a button
                     match self.selected_controller.read()?.as_ref() {
                         Some(selected_controller) => {
-                            if selected_controller.read()?.id() as i32 != which {
+                            if selected_controller.read()?.id() != which {
                                 continue;
                             }
                         }
@@ -312,7 +312,7 @@ impl EventSystem {
                     // only call back if the selected controller released a button
                     match self.selected_controller.read()?.as_ref() {
                         Some(selected_controller) => {
-                            if selected_controller.read()?.id() as i32 != which {
+                            if selected_controller.read()?.id() != which {
                                 continue;
                             }
                         }
@@ -330,7 +330,7 @@ impl EventSystem {
                         let mut controller = controller.write()?;
 
                         // only update axis, when selected controller made the change
-                        if controller.id() as i32 != which {
+                        if controller.id() != which {
                             continue;
                         }
 
